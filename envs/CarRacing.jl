@@ -237,6 +237,11 @@ function (env::CarRacingEnv{<:ClosedInterval})(a::Vector{Int})
     env(Float64.(a))
 end
 
+function (env::CarRacingEnv{<:ClosedInterval})(a::Matrix{Float64})
+    size(a)[2] == 1 || error("Only implented for one step")
+    env(vec(a))
+end
+
 function calc_tire_fy(α, μ, C_α, fzt, fxt)
     fy_max = sqrt(max((μ * fzt)^2 - fxt^2, 1e-8))
     ta = tan(α)

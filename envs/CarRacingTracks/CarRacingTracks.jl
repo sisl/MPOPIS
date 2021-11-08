@@ -1,8 +1,6 @@
 using CSV
 using LinearAlgebra
-using Plots
 
-import Plots.plot
 
 mutable struct Track
     x::Vector{Float64}
@@ -93,35 +91,6 @@ function within_track(track::Track, pos::Vector{Float64})
     projected_point = p1 + t * (p2 - p1)
     dist_to_pt = norm(projected_point - pos)
     return dist_to_pt < track.lane_width′[min_idx]
-
-end
-
-function plot(track::Track)
-
-    lx = track.boundary_left[:,1]
-    ly = track.boundary_left[:,2]
-    rx = track.boundary_right[:,1]
-    ry = track.boundary_right[:,2]
-    
-    lt = [Tuple(track.boundary_left[ii,:]) for ii in 1:length(track.boundary_left[:,1])]
-    rt = [Tuple(track.boundary_right[ii,:]) for ii in length(track.boundary_right[:,1]):-1:1]
-    tuple_list = [lt; rt]
-
-    trk_shape = Plots.Shape(tuple_list)
-    
-    plt = plot(trk_shape, 
-            fillcolor=plot_color(:grey, 0.8), 
-            lw=0,
-            legend=:none, 
-            grid=false,
-            background_color=palette(:algae)[50],
-            size=(1500, 1500),
-            xlim=(minimum([lx; rx])-10, maximum([lx; rx])+10),
-            ylim=(minimum([ly; ry])-10, maximum([ly; ry])+10),
-    )
-    plot!(plt, lx, ly, color=:black, lw=3, legend=:none)
-    plot!(plt, rx, ry, color=:black, lw=3, legend=:none)
-    return plt
 
 end
 

@@ -1,6 +1,22 @@
 
+
+using ReinforcementLearning
 using LinearAlgebra
 using IntervalSets
+import ReinforcementLearning.AbstractEnv
+
+abstract type AbstractWeightMethod end
+abstract type AbstractPathIntegralPolicy end
+abstract type AbstractGMPPI_Policy <: AbstractPathIntegralPolicy end
+
+struct Cross_Entropy <: AbstractWeightMethod
+    elite_threshold::Float64
+    num_elite_samples::Int
+end
+
+struct Information_Theoretic <: AbstractWeightMethod
+    λ::Float64
+end
 
 function action_space_size(act_space::ClosedInterval)
     return length(leftendpoint(act_space))
@@ -53,10 +69,28 @@ function get_model_controls(action_space::Base.OneTo, V::Vector{Float64}, horizo
     return control_mat
 end
 
-function compute_weights(costs::Vector{Float64}, λ::Float64)
+function compute_weights(weight_method::Information_Theoretic, costs::Vector{Float64})
+    λ = weight_method.λ
     ρ = minimum(costs)
     normalized_costs = -1/λ *(costs .- ρ)
     weights = exp.(normalized_costs)
     η = sum(weights)
     return weights ./ η
+end
+
+function (env::CartPoleEnv{<:Base.OneTo{Int}})(a::Vector)
+    length(a) == 1 || error("Only implented for 1 step")
+    env(a[1])
+end
+function (env::CartPoleEnv{<:ClosedInterval})(a::Vector)
+    length(a) == 1 || error("Only implented for 1 step")
+    env(a[1])
+end
+function (env::MountainCarEnv{<:ClosedInterval})(a::Vector)
+    length(a) == 1 || error("Only implented for 1 step")
+    env(a[1])
+end
+function (env::MountainCarEnv{<:Base.OneTo{Int}})(a::Vector)
+    length(a) == 1 || error("Only implented for 1 step")
+    env(a[1])
 end
