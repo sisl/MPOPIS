@@ -210,6 +210,8 @@ end
 function RLBase.reset!(env::CarRacingEnv{A,T}) where {A,T}
     ss_size = length(env.state)
     env.state = zeros(T, ss_size)
+    env.state[3] = deg2rad(90)
+    env.state[4] = 10.0
     env.t = 0
     env.done = false
     nothing

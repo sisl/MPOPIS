@@ -36,8 +36,7 @@ function plot(track::Track)
 
 end
 
-function plot(env::CarRacingEnv)
-
+function plot(env::CarRacingEnv; car_only=false)
     x, y, ψ = env.state[1:3]
     l_f = env.params.l_f
     l_r = env.params.l_r
@@ -52,41 +51,20 @@ function plot(env::CarRacingEnv)
     rl = rot_mat * [-l_r; w/2] + [x; y]
     rr = rot_mat * [-l_r; -w/2] + [x; y]
     
-    
     ar = rot_mat * [-l_r*0.8; 0] + [x; y]
     r = (l_f+l_r) * 0.8
     u, v = r * cos(ψ), r * sin(ψ)
 
     car_xy = vcat(fl', fr', rr', rl', fl')
 
-    plt = plot(env.track)
+    if !car_only 
+        plt = plot(env.track) 
+    end
     
     plot!(car_xy[:,1], car_xy[:,2], linestype=:path, linewidth=2, linecolor=:red, legend=false)
     arrow0!(ar[1], ar[2] , u, v, as=0.35, lc=:black)
     
 end
-
-# as: arrow head size 0-1 (fraction of arrow length)
-# la: arrow alpha transparency 0-1
-function arrow0!(x, y, u, v; as=0.07, lc=:black, la=1)
-    nuv = sqrt(u^2 + v^2)
-    v1, v2 = [u;v] / nuv,  [-v;u] / nuv
-    v4 = (3*v1 + v2)/3.1623  # sqrt(10) to get unit vector
-    v5 = v4 - 2*(v4'*v2)*v2
-    v4, v5 = as*nuv*v4, as*nuv*v5
-    plot!([x,x+u], [y,y+v], lc=lc,la=la)
-    plot!([x+u,x+u-v5[1]], [y+v,y+v-v5[2]], lc=lc, la=la)
-    plot!([x+u,x+u-v4[1]], [y+v,y+v-v4[2]], lc=lc, la=la)
-end
-
-# env.state[1] = x
-# env.state[2] = y
-# env.state[3] = Ψ
-# env.state[4] = Vx
-# env.state[5] = Vy
-# env.state[6] = Ψ_dot
-# env.state[7] = δ
-# env.state[8] = pedal
 
 function plot(env::CarRacingEnv, pol::AbstractPathIntegralPolicy, perc=1.0)
     K = pol.params.num_samples
@@ -112,4 +90,59 @@ function plot(env::CarRacingEnv, pol::AbstractPathIntegralPolicy, perc=1.0)
         end
     end
     return p
+end
+
+function plot(env::MultiCarRacingEnv)
+    
+    p = plot(env.envs[1])
+    for (ii, en) in enumerate(env.envs)
+        p = plot(en, car_only=true)
+    end
+    return p
+end
+
+
+function plot(env::MultiCarRacingEnv, pol::AbstractPathIntegralPolicy, perc=1.0)
+    K = pol.params.num_samples
+    trajs = pol.logger.trajectories
+    traj_weights = pol.logger.traj_weights
+    
+    mod_fac = 10 / perc
+    mod_fac = round(Int, mod_fac)
+
+    order = sortperm(traj_weights, rev=true)
+    
+    p = plot(env)
+
+    for (ii, k) ∈ enumerate(order)
+        col_idx = (K - ii + 1) / K
+        if mod(ii*10, mod_fac) == 0 && ii != 1
+            for jj ∈ 1:env.N
+                idx = round(Int, (jj-1)*pol.params.ss/env.N)
+                x = trajs[k][:,1+idx]
+                y = trajs[k][:,2+idx]
+                p = plot!(x,y, 
+                    linewidth=0.05,
+                    linecolor=cgrad(:RdYlGn_9)[col_idx]
+                )
+            end
+        end
+    end
+    return p
+end
+
+
+
+
+# as: arrow head size 0-1 (fraction of arrow length)
+# la: arrow alpha transparency 0-1
+function arrow0!(x, y, u, v; as=0.07, lc=:black, la=1)
+    nuv = sqrt(u^2 + v^2)
+    v1, v2 = [u;v] / nuv,  [-v;u] / nuv
+    v4 = (3*v1 + v2)/3.1623  # sqrt(10) to get unit vector
+    v5 = v4 - 2*(v4'*v2)*v2
+    v4, v5 = as*nuv*v4, as*nuv*v5
+    plot!([x,x+u], [y,y+v], lc=lc,la=la)
+    plot!([x+u,x+u-v5[1]], [y+v,y+v-v5[2]], lc=lc, la=la)
+    plot!([x+u,x+u-v4[1]], [y+v,y+v-v4[2]], lc=lc, la=la)
 end

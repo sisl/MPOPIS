@@ -53,9 +53,10 @@ function simulate_environment(environment;
     plot_steps = false,
     save_gif = false,
     plot_traj = false,
-    polt_traj_perc = 1.0,
+    plot_traj_perc = 1.0,
     laps = 2,
-    
+    num_cars = 2,
+
     continuous = true,
     
     num_samples = 10, 
@@ -69,17 +70,25 @@ function simulate_environment(environment;
     pol_log = false,
     )
 
+    gif_name = "$environment-$policy_type-$num_samples-$horizon-$λ-$α-"
+    cov_v = cov_mat[1,1]
+    gif_name = gif_name * "$cov_v-"
+    if policy_type == :cemppi
+        gif_name = gif_name * "$ce_its-$ce_elite_threshold-"
+    end
+    gif_name = gif_name * "$num_trials-$laps.gif"
+
     anim = Animation()
 
     rews = 0
     steps = 0
 
     @printf("Trials    : %12s : %6s", "Reward", "Steps")
-    if environment == :carracing
+    if environment ∈ (:cr, :mcr)
         for ii ∈ 1:laps
             @printf(" : %4s%d", "lap ", ii)
         end
-        @printf(" : %6s", "BoundV")
+        @printf(" : %6s", "Violat")
     end
     @printf(" : %7s", "Ex Time")
     @printf("\n")
@@ -87,7 +96,8 @@ function simulate_environment(environment;
         # Start timer
         time_start = Dates.now()
 
-        env = get_environment(environment, continuous);
+        env = get_environment(environment, 
+            continuous=continuous, num_cars=num_cars);
         pol = get_policy(env, policy_type, num_samples, horizon,
                 λ, α, U₀, cov_mat, ce_its, ce_elite_threshold,
                 pol_log,
@@ -96,7 +106,7 @@ function simulate_environment(environment;
         seed!(pol, k)
         
         pm = Progress(num_steps, 1, "Trial $k ....", 50)
-        rew, cnt, lap, bound_viol, prev_y = 0, 0, 0, 0, 0
+        rew, cnt, lap, viol, prev_y = 0, 0, 0, 0, 0
         lap_time = zeros(Int, laps)
         while !env.done && cnt <= num_steps
             act = pol(env)
@@ -106,7 +116,7 @@ function simulate_environment(environment;
             rew += step_rew
             if plot_steps || save_gif
                 if plot_traj && pol_log
-                    p = plot(env, pol, polt_traj_perc)
+                    p = plot(env, pol, plot_traj_perc)
                 else 
                     p = plot(env)
                 end
@@ -115,18 +125,26 @@ function simulate_environment(environment;
             end
             next!(pm)
 
-            if environment == :carracing
+            if environment ∈ (:cr, :mcr)
                 curr_y = env.state[2]
-                if step_rew < -8000
-                    bound_viol += 1
+                if environment == :mcr
+                    curr_y = minimum([en.state[2] for en ∈ env.envs])    
                 end
-                if prev_y < 0.0 && 
-                    curr_y >= 0.0 && 
-                    norm(env.state[1:2]) <= 15.0
+                if step_rew < -8000
+                    viol += 1
+                end
+                if environment == :mcr
+                    # Exact, but should work
+                    d = minimum([norm(en.state[1:2]) for en ∈ env.envs])
+                else
+                    d = norm(env.state[1:2])
+                end
+
+                if prev_y < 0.0 && curr_y >= 0.0 && d <= 15.0
                     lap += 1
                     lap_time[lap] = cnt
                 end
-                if lap >= laps
+                if lap >= laps || viol > 10
                     env.done = true
                 end
                 prev_y = curr_y
@@ -141,11 +159,11 @@ function simulate_environment(environment;
             print("\e[1G") # move cursor to column 1
         end
         @printf("Trial %4d: %12.1f : %6d", k, rew, cnt-1)
-        if environment == :carracing
+        if environment ∈ (:cr, :mcr)
             for ii ∈ 1:laps
                 @printf(" : %5d", lap_time[ii])
             end
-            @printf(" : %6d", bound_viol)
+            @printf(" : %6d", viol)
         end
         time_end = Dates.now()
         seconds_ran = Dates.value(time_end - time_start) / 1000
@@ -157,22 +175,23 @@ function simulate_environment(environment;
     end
     @printf("Trial %4s: %12.1f : %6.1f\n", "Ave", rews/num_trials, steps/num_trials)
     if save_gif
-        println("Saving gif...")
-        gif(anim, "temp_gif.gif", fps=10)
+        println("Saving gif...$gif_name")
+        gif(anim, gif_name, fps=10)
     end
 end
 
-function get_environment(environment::Symbol, continuous::Bool)
-    if environment == :cartpole
+function get_environment(environment::Symbol; 
+    continuous::Bool = true,
+    num_cars::Int = 2,
+)
+    if environment == :cp
         env = CartPoleEnv(continuous=continuous)
-    elseif environment == :mountaincar
+    elseif environment == :mc
         env = MountainCarEnv(continuous=continuous)
-    elseif environment == :carracing
+    elseif environment == :cr
         env = CarRacingEnv()
-        env.state[1] = 0.0
-        env.state[2] = 0.0
-        env.state[3] = deg2rad(90)
-        env.state[4] = 10.0
+    elseif environment == :mcr
+        env = MultiCarRacingEnv(num_cars)
     else
         error("Not implemented for $environment")
     end
@@ -223,36 +242,35 @@ function get_policy(env, policy_type,
     return pol
 end
 
-run_num = 1
+run_num = 4
 
 if run_num == 1
-    simulate_environment(:carracing, 
-        num_steps=1350, 
-        num_trials=2, 
+    simulate_environment(:cr, 
+        num_steps = 1350, 
+        num_trials = 2, 
         laps = 2,
 
-        policy_type=:gmppi, 
-        num_samples=500, 
+        policy_type=:mppi, 
+        num_samples=1500, 
         horizon=50,  
         
-        λ = 1.0,
+        λ = 0.5,
         α = 1.0,
         U₀ = [0.0, 0.0],
-        cov_mat = [1.5 0.0 ; 
-                0.0 1.5],
+        cov_mat = block_diagm([0.0625, 0.1], 1),
         
         ce_its = 10,
         ce_elite_threshold = 0.8,
 
         pol_log=true,
         plot_traj=true,
-        polt_traj_perc = 0.5,
+        plot_traj_perc = 0.5,
 
         save_gif=true, 
         plot_steps=false,
     )
 elseif run_num == 2
-    simulate_environment(:mountaincar, 
+    simulate_environment(:mc, 
         num_steps=200, 
         num_trials=1, 
         policy_type=:cemppi, 
@@ -267,7 +285,7 @@ elseif run_num == 2
         plot_steps=false
     )
 elseif run_num == 3
-    simulate_environment(:cartpole, 
+    simulate_environment(:cp, 
         num_steps=200, 
         num_trials=1, 
         policy_type=:cemppi, 
@@ -280,5 +298,35 @@ elseif run_num == 3
 
         save_gif=false, 
         plot_steps=false
+    )
+elseif run_num == 4
+    num_cars = 3
+    U₀ = zeros(Float64, num_cars*2)
+    cov_mat = block_diagm([0.0625, 0.1], num_cars)
+
+    simulate_environment(:mcr, 
+        num_steps = 100, 
+        num_trials = 1, 
+        laps = 2,
+        num_cars = num_cars,
+
+        policy_type=:cemppi, 
+        num_samples=150, 
+        horizon=50,  
+        
+        λ = 0.5,
+        α = 1.0,
+        U₀ = U₀,
+        cov_mat = cov_mat,
+        
+        ce_its = 10,
+        ce_elite_threshold = 0.8,
+
+        pol_log=true,
+        plot_traj=true,
+        plot_traj_perc = 1.0,
+
+        save_gif=true, 
+        plot_steps=false,
     )
 end

@@ -123,19 +123,41 @@ end
 """
     reward(env::MultiCarRacingEnv)
     - Sum over rewards of the ohter envrionments
+    - Collision (≤ 4m): -7000
+    - Penalize distance away by the distance amount
 """
 function RLBase.reward(env::MultiCarRacingEnv{T}) where {T} 
-    reward = 0.0
-    for en in env.envs
-        reward += reward(en)
+    rew = 0.0
+    for (ii, en) in enumerate(env.envs)
+        rew += reward(en)
+        for jj ∈ (ii+1):env.N
+            Δd = norm(env.envs[jj].state[1:2] - en.state[1:2])
+            rew += -Δd
+            if Δd ≤ 4.0
+                rew += -11000.0
+            end
+        end
     end
-    return reward
+    return rew
 end
 
 function RLBase.reset!(env::MultiCarRacingEnv{A,T}) where {A,T}
     ss_size = length(env.state)
-    env.state = zeros(T, ss_size)
-    _update_states_env2envs(env)
+    ind_ss_size = round(Int, length(env.state)/env.N)
+    env.envs[1].state = zeros(T, ind_ss_size)
+    env.envs[1].state[3] = deg2rad(90)
+    env.envs[1].state[4] = 10.0
+    for ii ∈ 2:env.N
+        if mod(ii,2) == 0 
+            env.envs[ii].state[1] = (ii-1)*5.0
+        else
+            env.envs[ii].state[1] = (2-ii)*5.0
+        end
+        env.envs[ii].state[3] = deg2rad(90)
+        env.envs[ii].state[4] = 10.0
+    end
+
+    _update_states_envs2env(env)
     env.t = 0
     env.done = false
     nothing
@@ -160,7 +182,7 @@ end
     a[2N] = Pedal amount Car N
 """
 function (env::MultiCarRacingEnv)(a::Vector{Float64})
-    length(a) == env.N * 2 || error("Action space of each car is only of size 2")
+    length(a) == env.N * 2 || error("Action space of each car is of size 2")
     for (ii, en) in enumerate(env.envs)
         aᵢ = a[(2*ii-1):(2*ii)]
         _step!(en, aᵢ)
@@ -170,4 +192,9 @@ end
 
 function (env::MultiCarRacingEnv)(a::Vector{Int})
     env(Float64.(a))
+end
+
+function (env::MultiCarRacingEnv)(a::Matrix{Float64})
+    size(a)[2] == 1 || error("Only implented for one step")
+    env(vec(a))
 end
