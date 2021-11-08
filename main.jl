@@ -305,8 +305,8 @@ elseif run_num == 4
     cov_mat = block_diagm([0.0625, 0.1], num_cars)
 
     simulate_environment(:mcr, 
-        num_steps = 100, 
-        num_trials = 1, 
+        num_steps = 1500, 
+        num_trials = 2, 
         laps = 2,
         num_cars = num_cars,
 
