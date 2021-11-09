@@ -69,6 +69,7 @@ end
 - `δt = 0.01,                                   # Time step used for integration`
 - `β_limit = deg2rad(45)                        # Beta penalty limit`
 - `track = "./envs/CarRacingTracks/curve.csv,   # Track to load`
+****** TO-DO Add lane_width
 - `rng = Random.GLOBAL_RNG`
 """
 function CarRacingEnv(;

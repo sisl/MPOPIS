@@ -63,7 +63,6 @@ function plot(env::CarRacingEnv; car_only=false)
     
     plot!(car_xy[:,1], car_xy[:,2], linestype=:path, linewidth=2, linecolor=:red, legend=false)
     arrow0!(ar[1], ar[2] , u, v, as=0.35, lc=:black)
-    
 end
 
 function plot(env::CarRacingEnv, pol::AbstractPathIntegralPolicy, perc=1.0)
@@ -93,7 +92,6 @@ function plot(env::CarRacingEnv, pol::AbstractPathIntegralPolicy, perc=1.0)
 end
 
 function plot(env::MultiCarRacingEnv)
-    
     p = plot(env.envs[1])
     for (ii, en) in enumerate(env.envs)
         p = plot(en, car_only=true)
@@ -132,6 +130,35 @@ function plot(env::MultiCarRacingEnv, pol::AbstractPathIntegralPolicy, perc=1.0)
 end
 
 
+function plot(env::DroneEnv; drone_only=false)
+    x, y, z = env.state[1:3]
+    vx, vy, vz = env.state[4:6]
+    L = 2*env.params.L
+
+    ψ = atan(vy,vx)
+    rot_mat = [cos(ψ) -sin(ψ) ;
+               sin(ψ)  cos(ψ)
+              ]
+
+    fl = rot_mat * [L; L] + [x; y]
+    fr = rot_mat * [L; -L] + [x; y]
+    rl = rot_mat * [-L; L] + [x; y]
+    rr = rot_mat * [-L; -L] + [x; y]
+    
+    ar = rot_mat * [-L*0.8; 0] + [x; y]
+    r = 2*L*0.8
+    u, v = r * cos(ψ), r * sin(ψ)
+
+    car_xy = vcat(fl', fr', rr', rl', fl')
+
+    if !drone_only 
+        plt = plot(env.track) 
+    end
+    
+    plot!(car_xy[:,1], car_xy[:,2], linestype=:path, linewidth=2, linecolor=:red, legend=false)
+    arrow0!(ar[1], ar[2] , u, v, as=0.35, lc=:black)
+    return plt
+end
 
 
 # as: arrow head size 0-1 (fraction of arrow length)

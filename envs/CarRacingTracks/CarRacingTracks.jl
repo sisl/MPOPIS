@@ -2,7 +2,7 @@ using CSV
 using LinearAlgebra
 
 
-mutable struct Track
+struct Track
     x::Vector{Float64}
     y::Vector{Float64}
     lane_width::Vector{Float64}  

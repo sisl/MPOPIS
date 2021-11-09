@@ -12,7 +12,9 @@ struct DroneEnvParams{T}
     Iₘ_inv::Matrix{T}
     k_m::T
     k_F::T
-    k_M
+    k_M::T
+    ω_min::T
+    ω_max::T
 end
 
 Base.show(io::IO, params::DroneEnvParams) = print(
@@ -44,9 +46,12 @@ end
 - `k_m = 20,	 			                    # Motor constant (1/s)`
 - `k_F = 6.11e-8,   	                        # Motor force constant (N/rpm²)`
 - `k_M = 1.5e-9,                                # Motor moment constant (N/rpm²)`
+- `ω_min = 1200.0,                              # Motor min rotation speed (rpm)`
+- `ω_max = 7800.0,                              # Motor max rotation speed (rpm)`
 - `dt = 0.1`,                                   # Time step between actions
 - `δt = 0.01,                                   # Time step used for integration`
 - `track = "./envs/CarRacingTracks/curve.csv,   # Track to load`
+- `lane_width = 5.0,                            # Track lane_width`
 - `rng = Random.GLOBAL_RNG`
 """
 function DroneEnv(;
@@ -57,9 +62,12 @@ function DroneEnv(;
     k_m = 20,
     k_F = 6.11e-8,
     k_M = 1.5e-9,
+    ω_min = 1200.0,
+    ω_max = 7800.0,
     dt = 0.1,
     δt = 0.01,
     track = "./envs/CarRacingTracks/curve.csv",
+    lane_width = 5.0,
     rng = Random.GLOBAL_RNG,
 )
 
@@ -71,6 +79,8 @@ function DroneEnv(;
         k_m,
         k_F,
         k_M,
+        ω_min,
+        ω_max,
     )
     
     return DroneEnv(params, T=T, dt=dt, δt=δt, track=track, rng=rng)
@@ -84,6 +94,7 @@ end
 - `dt = 0.1`,                                   # Time step between actions
 - `δt = 0.01,                                   # Time step used for integration`
 - `track = "./envs/CarRacingTracks/curve.csv,   # Track to load`
+- `lane_width = 5.0,                            # Track lane_width`
 - `rng = Random.GLOBAL_RNG`
 """
 function DroneEnv(params::DroneEnvParams;
@@ -91,19 +102,20 @@ function DroneEnv(params::DroneEnvParams;
     dt = 0.1,
     δt = 0.01,
     track = "./envs/CarRacingTracks/curve.csv",
+    lane_width = 5.0,
     rng = Random.GLOBAL_RNG,
 )
 
     action_space = ClosedInterval{Vector{T}}(
-        [1200.0, 1200.0, 1200.0, 1200.0], 
-        [7800.0, 7800.0, 7800.0, 7800.0],
+        [-1.0, -1.0, -1.0, -1.0], 
+        [ 1.0,  1.0,  1.0,  1.0],
         )
 
     observation_space = Space([
         -Inf..Inf,                          # X position 
         -Inf..Inf,                          # Y position 
         -Inf..Inf,                          # Z position 
-        -Inf..Inf,                          # Vx (translation velocity)
+        -Inf..Inf,                          # Vx (translational velocity)
         -Inf..Inf,                          # Vy 
         -Inf..Inf,                          # Vz 
         -π..π,                              # Euler angle 1 (roll, about x, ϕ)
@@ -129,7 +141,7 @@ function DroneEnv(params::DroneEnvParams;
         0,
         dt,
         δt,
-        Track(track),
+        Track(track, width=lane_width),
         rng,
         )
 
@@ -158,24 +170,24 @@ function RLBase.reward(env::DroneEnv{T}) where {T}
     if any(isnan.(env.state))
         return -100000.0
     end
-    reward = 0.0
+    rew = 0.0
     
     # Go towards a point
     desired_pos = [10.0, 10.0, 10.0]
     dist_from_desired = norm(desired_pos - env.state[1:3])
-    reward -= dist_from_desired
+    rew += -dist_from_desired
 
     # Penalize for more time spent away from the point
     if dist_from_desired >= 5
-        reward -= 1
+        rew += -1
     end
 
-    return reward
+    return rew
 end
 
 function RLBase.reset!(env::DroneEnv{A,T}) where {A,T}
     state = zeros(T,length(env.state))
-    state[end-3:end] = ones(T, 4) * 1200.0
+    state[end-3:end] = ones(T, 4) * 1500.0
     env.state = state
     env.t = 0
     env.done = false
@@ -199,6 +211,7 @@ end
 """
 function (env::DroneEnv{<:ClosedInterval})(a::Vector{Float64})
     a in env.action_space || error("Action is not in action space")
+    length(a) == 4 || error("Incorrect action size")
     _step!(env, a)
 end
 
@@ -206,8 +219,13 @@ function (env::DroneEnv{<:ClosedInterval})(a::Vector{Int})
     env(Float64.(a))
 end
 
+function (env::DroneEnv{<:ClosedInterval})(a::Matrix{Float64})
+    size(a)[2] == 1 || error("Only implented for one step")
+    env(vec(a))
+end
+
 """
-Quadrotor dynamics NOT considering complications due to varying thurst based
+Quadrotor dynamics NOT considering complications due to varying thrust based
 on angle of attack, blade flapping, or airflow disruption.
 
 N. Michael, D. Mellinger, Q. Lindsey, V. Kumar, The GRASP Multiple Micro UAV Testbed
@@ -223,7 +241,9 @@ function _step!(env::DroneEnv, a::Vector{Float64})
     dt = env.dt
     δt = env.δt
 
-    Ωᵈ = a
+    # Scaled input controls from -1 to 1. Tis adjusts
+    #  them to the appropriate rate (-1 = min, +1 = max)
+    Ωᵈ = env.params.ω_min .+ (a .+1 ) .* ((env.params.ω_max-env.params.ω_min)/2)
 
     integration_steps = round(Int, dt/δt)
     for _ in 1:integration_steps

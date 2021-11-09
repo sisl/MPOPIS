@@ -242,91 +242,112 @@ function get_policy(env, policy_type,
     return pol
 end
 
-run_num = 4
+for ii = 4:6
 
-if run_num == 1
-    simulate_environment(:cr, 
-        num_steps = 1350, 
-        num_trials = 2, 
-        laps = 2,
+    # if ii == 1
+    #     p_type = :mppi
+    #     ns = 1500
+    #     traj_p = 0.5
+    # elseif ii == 2
+    #     p_type = :gmppi
+    #     ns = 1500
+    #     traj_p = 0.5
+    # elseif ii == 3
+        p_type = :cemppi
+        ns = 150
+        traj_p = 1.0
+    # else
+    #     error("Something isn't right")
+    # end
 
-        policy_type=:mppi, 
-        num_samples=1500, 
-        horizon=50,  
-        
-        λ = 0.5,
-        α = 1.0,
-        U₀ = [0.0, 0.0],
-        cov_mat = block_diagm([0.0625, 0.1], 1),
-        
-        ce_its = 10,
-        ce_elite_threshold = 0.8,
+    run_num = 4
 
-        pol_log=true,
-        plot_traj=true,
-        plot_traj_perc = 0.5,
 
-        save_gif=true, 
-        plot_steps=false,
-    )
-elseif run_num == 2
-    simulate_environment(:mc, 
-        num_steps=200, 
-        num_trials=1, 
-        policy_type=:cemppi, 
-        num_samples=100, 
-        horizon=15, 
-        continuous=true, 
-        U₀=[0.0], 
+    if run_num == 1
+        simulate_environment(:cr, 
+            num_steps = 1350, 
+            num_trials = 2, 
+            laps = 2,
 
-        pol_log=true,
+            policy_type=:mppi, 
+            num_samples=1500, 
+            horizon=50,  
+            
+            λ = 0.5,
+            α = 1.0,
+            U₀ = [0.0, 0.0],
+            cov_mat = block_diagm([0.0625, 0.1], 1),
+            
+            ce_its = 10,
+            ce_elite_threshold = 0.8,
 
-        save_gif=false, 
-        plot_steps=false
-    )
-elseif run_num == 3
-    simulate_environment(:cp, 
-        num_steps=200, 
-        num_trials=1, 
-        policy_type=:cemppi, 
-        num_samples=100, 
-        horizon=15, 
-        continuous=true, 
-        U₀=[0.0], 
+            pol_log=true,
+            plot_traj=true,
+            plot_traj_perc = 0.5,
 
-        pol_log=true,
+            save_gif=true, 
+            plot_steps=false,
+        )
+    elseif run_num == 2
+        simulate_environment(:mc, 
+            num_steps=200, 
+            num_trials=1, 
+            policy_type=:cemppi, 
+            num_samples=100, 
+            horizon=15, 
+            continuous=true, 
+            U₀=[0.0], 
 
-        save_gif=false, 
-        plot_steps=false
-    )
-elseif run_num == 4
-    num_cars = 3
-    U₀ = zeros(Float64, num_cars*2)
-    cov_mat = block_diagm([0.0625, 0.1], num_cars)
+            pol_log=true,
 
-    simulate_environment(:mcr, 
-        num_steps = 1500, 
-        num_trials = 2, 
-        laps = 2,
-        num_cars = num_cars,
+            save_gif=false, 
+            plot_steps=false
+        )
+    elseif run_num == 3
+        simulate_environment(:cp, 
+            num_steps=200, 
+            num_trials=1, 
+            policy_type=:cemppi, 
+            num_samples=100, 
+            horizon=15, 
+            continuous=true, 
+            U₀=[0.0], 
 
-        policy_type=:cemppi, 
-        num_samples=150, 
-        horizon=50,  
-        
-        λ = 0.5,
-        α = 1.0,
-        U₀ = U₀,
-        cov_mat = cov_mat,
-        
-        ce_its = 10,
-        ce_elite_threshold = 0.8,
+            pol_log=true,
 
-        pol_log=true,
-        plot_traj=true,
-        plot_traj_perc = 1.0,
+            save_gif=false, 
+            plot_steps=false
+        )
+    elseif run_num == 4
+        num_cars = ii
+        U₀ = zeros(Float64, num_cars*2)
+        cov_mat = block_diagm([0.0625, 0.1], num_cars)
 
-        save_gif=true, 
-        plot_steps=false,
-    )
+        simulate_environment(:mcr, 
+            num_steps = 2000, 
+            num_trials = 2, 
+            laps = 2,
+            num_cars = num_cars,
+
+            policy_type = p_type, 
+            num_samples = ns, 
+            horizon=50,  
+            
+            λ = 0.5,
+            α = 1.0,
+            U₀ = U₀,
+            cov_mat = cov_mat,
+            
+            ce_its = 10,
+            ce_elite_threshold = 0.8,
+
+            pol_log=true,
+            plot_traj=true,
+            plot_traj_perc = traj_p,
+
+            save_gif=true, 
+            plot_steps=false,
+        )
+    end
+
 end

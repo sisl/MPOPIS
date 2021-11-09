@@ -149,9 +149,9 @@ function RLBase.reset!(env::MultiCarRacingEnv{A,T}) where {A,T}
     env.envs[1].state[4] = 10.0
     for ii ∈ 2:env.N
         if mod(ii,2) == 0 
-            env.envs[ii].state[1] = (ii-1)*5.0
+            env.envs[ii].state[1] = ii/2*5.0
         else
-            env.envs[ii].state[1] = (2-ii)*5.0
+            env.envs[ii].state[1] = (1-ii)/2*5.0
         end
         env.envs[ii].state[3] = deg2rad(90)
         env.envs[ii].state[4] = 10.0
