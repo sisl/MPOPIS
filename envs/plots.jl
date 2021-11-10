@@ -36,7 +36,8 @@ function plot(track::Track)
 
 end
 
-function plot(env::CarRacingEnv; car_only=false)
+function plot(env::CarRacingEnv; car_only::Bool=false, car_color::Int=1)
+    if mod(car_color, 6) == 0 car_color += 1 end
     x, y, ψ = env.state[1:3]
     l_f = env.params.l_f
     l_r = env.params.l_r
@@ -61,7 +62,12 @@ function plot(env::CarRacingEnv; car_only=false)
         plt = plot(env.track) 
     end
     
-    plot!(car_xy[:,1], car_xy[:,2], linestype=:path, linewidth=2, linecolor=:red, legend=false)
+    plot!(car_xy[:,1], car_xy[:,2], 
+        linestype = :path, 
+        linewidth = 2, 
+        linecolor = palette(:lighttest)[mod1(car_color, 7)], 
+        legend = false
+    )
     arrow0!(ar[1], ar[2] , u, v, as=0.35, lc=:black)
 end
 
@@ -92,9 +98,9 @@ function plot(env::CarRacingEnv, pol::AbstractPathIntegralPolicy, perc=1.0)
 end
 
 function plot(env::MultiCarRacingEnv)
-    p = plot(env.envs[1])
-    for (ii, en) in enumerate(env.envs)
-        p = plot(en, car_only=true)
+    p = plot(env.envs[1], car_color=1)
+    for ii in 2:env.N
+        p = plot(env.envs[ii], car_only=true, car_color=ii)
     end
     return p
 end
