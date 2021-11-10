@@ -320,8 +320,8 @@ for ii = 1:1
     #     traj_p = 0.5
     # elseif ii == 3
 
-    sim_type            = :cr
-    num_cars            = 1
+    sim_type            = :mcr
+    num_cars            = 2
     n_trials            = 5
     laps                = 2
 
@@ -357,7 +357,7 @@ for ii = 1:1
     println("Σ:                     block_diagm([0.0625, 0.1], num_cars)")
     println()
 
-    simulate_environment(:cr, 
+    simulate_environment(sim_type, 
         num_steps = n_steps, 
         num_trials = n_trials, 
         laps = laps,
