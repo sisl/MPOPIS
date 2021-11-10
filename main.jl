@@ -1,5 +1,3 @@
-
-
 using Profile
 using Printf
 using ProgressMeter
@@ -85,16 +83,20 @@ function simulate_environment(environment;
     max_βs = zeros(Float64, num_trials)
     β_viols = zeros(Float64, num_trials)
     T_viols = zeros(Float64, num_trials)
+    C_viols = zeros(Float64, num_trials)
     exec_times = zeros(Float64, num_trials)  
 
-    @printf("Trial    #: %12s : %6s", "Reward", "Steps")
+    @printf("Trial    #: %12s : %7s", "Reward", "Steps")
     if environment ∈ (:cr, :mcr)
         for ii ∈ 1:laps
-            @printf(" : %4s%d", "lap ", ii)
+            @printf(" : %6s%d", "lap ", ii)
         end
-        @printf(" : %6s : %6s", "Mean V", "Max V")
-        @printf(" : %6s : %6s", "Mean β", "Max β")
-        @printf(" : %6s : %6s", "β Viol", "T Viol")
+        @printf(" : %7s : %7s", "Mean V", "Max V")
+        @printf(" : %7s : %7s", "Mean β", "Max β")
+        @printf(" : %7s : %7s", "β Viol", "T Viol")
+        if environment == :mcr
+            @printf(" : %7s", "C Viol")
+        end
     end
     @printf(" : %7s", "Ex Time")
     @printf("\n")
@@ -118,7 +120,8 @@ function simulate_environment(environment;
         v_max_log = Vector{Float64}()
         β_mean_log = Vector{Float64}()
         β_max_log = Vector{Float64}()
-        rew, cnt, lap, prev_y, trk_viol, β_viol = 0, 0, 0, 0, 0, 0, 0
+        rew, cnt, lap, prev_y = 0, 0, 0, 0
+        trk_viol, β_viol, crash_viol = 0, 0, 0
         while !env.done && cnt <= num_steps
             act = pol(env)
             env(act)
@@ -152,8 +155,12 @@ function simulate_environment(environment;
                 push!(β_max_log, maximum(βs))
                 
                 if step_rew < -4000
-                    if exceed_β(env) β_viol += 1 end
-                    if !within_track(env) trk_viol += 1 end
+                    ex_β = exceed_β(env)
+                    within_t = within_track(env)
+                    if ex_β β_viol += 1 end
+                    if !within_t trk_viol += 1 end
+                    temp_rew = step_rew + ex_β*5000 + !within_t*10000
+                    if temp_rew < -10500 crash_viol += 1 end
                 end
 
                 if environment == :mcr
@@ -182,14 +189,17 @@ function simulate_environment(environment;
             print("\e[1G") # move cursor to column 1
         end
 
-        @printf("Trial %4d: %12.1f : %6d", k, rew, cnt-1)
+        @printf("Trial %4d: %12.2f : %7d", k, rew, cnt-1)
         if environment ∈ (:cr, :mcr)
             for ii ∈ 1:laps
-                @printf(" : %5d", lap_time[ii])
+                @printf(" : %7d", lap_time[ii])
             end
-            @printf(" : %6.2f : %6.2f", mean(v_mean_log), maximum(v_max_log))
-            @printf(" : %6.2f : %6.2f",  mean(β_mean_log), maximum(β_max_log))
-            @printf(" : %6d : %6d", β_viol, trk_viol)
+            @printf(" : %7.2f : %7.2f", mean(v_mean_log), maximum(v_max_log))
+            @printf(" : %7.2f : %7.2f",  mean(β_mean_log), maximum(β_max_log))
+            @printf(" : %7d : %7d", β_viol, trk_viol)
+            if environment == :mcr
+                @printf(" : %7d", crash_viol)
+            end
         end
 
         time_end = Dates.now()
@@ -210,31 +220,38 @@ function simulate_environment(environment;
             max_βs[k] = maximum(β_max_log)
             β_viols[k] = β_viol
             T_viols[k] = trk_viol
+            C_viols[k] = crash_viol
         end        
 
     end
 
     @printf("-----------------------------------\n")
 
-    @printf("Trials %3s: %12.1f : %6.1f", "AVE", mean(rews), mean(steps))
+    @printf("Trials %3s: %12.2f : %7.2f", "AVE", mean(rews), mean(steps))
     if environment ∈ (:cr, :mcr)
         for ii ∈ 1:laps
-            @printf(" : %5d", mean(lap_ts[ii]))
+            @printf(" : %7.2f", mean(lap_ts[ii]))
         end
-        @printf(" : %6.2f : %6.2f", mean(mean_vs), mean(max_vs))
-            @printf(" : %6.2f : %6.2f",  mean(mean_βs), mean(max_βs))
-            @printf(" : %6d : %6d", mean(β_viols), mean(T_viols))
+        @printf(" : %7.2f : %7.2f", mean(mean_vs), mean(max_vs))
+        @printf(" : %7.2f : %7.2f",  mean(mean_βs), mean(max_βs))
+        @printf(" : %7.2f : %7.2f", mean(β_viols), mean(T_viols))
+        if environment == :mcr
+            @printf(" : %7.2f", mean(C_viols))
+        end
     end
     @printf(" : %7.2f\n", mean(exec_times))
     
-    @printf("Trials %3s: %12.1f : %6.1f", "STD", std(rews), std(steps))
+    @printf("Trials %3s: %12.2f : %7.2f", "STD", std(rews), std(steps))
     if environment ∈ (:cr, :mcr)
         for ii ∈ 1:laps
-            @printf(" : %5d", std(lap_ts[ii]))
+            @printf(" : %7.2f", std(lap_ts[ii]))
         end
-        @printf(" : %6.2f : %6.2f", std(mean_vs), std(max_vs))
-            @printf(" : %6.2f : %6.2f",  std(mean_βs), std(max_βs))
-            @printf(" : %6d : %6d", std(β_viols), std(T_viols))
+        @printf(" : %7.2f : %7.2f", std(mean_vs), std(max_vs))
+        @printf(" : %7.2f : %7.2f",  std(mean_βs), std(max_βs))
+        @printf(" : %7.2f : %7.2f", std(β_viols), std(T_viols))
+        if environment == :mcr
+            @printf(" : %7.2f", std(C_viols))
+        end
     end
     @printf(" : %7.2f\n", std(exec_times))
 
@@ -311,23 +328,21 @@ end
 for ii = 1:1
 
     # if ii == 1
-    #     p_type = :mppi
-    #     ns = 1500
-    #     traj_p = 0.5
-    # elseif ii == 2
     #     p_type = :gmppi
     #     ns = 1500
-    #     traj_p = 0.5
-    # elseif ii == 3
+    # elseif ii == 2
+    #     p_type = :cemppi
+    #     ns = 1500
+    # end
 
-    sim_type            = :cr
-    num_cars            = 1
+    sim_type            = :mcr
+    num_cars            = 2
     n_trials            = 5
-    laps                = 2
+    laps                = 3
 
-    p_type              = :mppi
+    p_type              = :gmppi
     n_steps             = 40
-    n_samp              = 500
+    n_samp              = 150
     horizon             = 50
     λ                   = 0.5
     α                   = 1.0
