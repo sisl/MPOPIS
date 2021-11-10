@@ -44,8 +44,6 @@ function RLBase.reward(env::CartPoleEnv{A,T}) where {A,T}
 end
 
 
-
-
 function simulate_environment(environment;
     num_trials = 1,
     num_steps = 200,
@@ -56,9 +54,7 @@ function simulate_environment(environment;
     plot_traj_perc = 1.0,
     laps = 2,
     num_cars = 2,
-
     continuous = true,
-    
     num_samples = 10, 
     horizon = 15,
     λ = 1.0,
@@ -70,7 +66,7 @@ function simulate_environment(environment;
     pol_log = false,
     )
 
-    gif_name = "$environment-$policy_type-$num_samples-$horizon-$λ-$α-"
+    gif_name = "$environment-$num_cars-$policy_type-$num_samples-$horizon-$λ-$α-"
     cov_v = cov_mat[1,1]
     gif_name = gif_name * "$cov_v-"
     if policy_type == :cemppi
@@ -80,15 +76,25 @@ function simulate_environment(environment;
 
     anim = Animation()
 
-    rews = 0
-    steps = 0
+    rews = zeros(Float64, num_trials)
+    steps = zeros(Float64, num_trials)
+    lap_ts = [zeros(Float64, num_trials) for _ in 1:laps]
+    mean_vs = zeros(Float64, num_trials)
+    max_vs = zeros(Float64, num_trials)
+    mean_βs = zeros(Float64, num_trials)
+    max_βs = zeros(Float64, num_trials)
+    β_viols = zeros(Float64, num_trials)
+    T_viols = zeros(Float64, num_trials)
+    exec_times = zeros(Float64, num_trials)  
 
-    @printf("Trials    : %12s : %6s", "Reward", "Steps")
+    @printf("Trial    #: %12s : %6s", "Reward", "Steps")
     if environment ∈ (:cr, :mcr)
         for ii ∈ 1:laps
             @printf(" : %4s%d", "lap ", ii)
         end
-        @printf(" : %6s", "Violat")
+        @printf(" : %6s : %6s", "Mean V", "Max V")
+        @printf(" : %6s : %6s", "Mean β", "Max β")
+        @printf(" : %6s : %6s", "β Viol", "T Viol")
     end
     @printf(" : %7s", "Ex Time")
     @printf("\n")
@@ -106,8 +112,13 @@ function simulate_environment(environment;
         seed!(pol, k)
         
         pm = Progress(num_steps, 1, "Trial $k ....", 50)
-        rew, cnt, lap, viol, prev_y = 0, 0, 0, 0, 0
+        
         lap_time = zeros(Int, laps)
+        v_mean_log = Vector{Float64}()
+        v_max_log = Vector{Float64}()
+        β_mean_log = Vector{Float64}()
+        β_max_log = Vector{Float64}()
+        rew, cnt, lap, prev_y, trk_viol, β_viol = 0, 0, 0, 0, 0, 0, 0
         while !env.done && cnt <= num_steps
             act = pol(env)
             env(act)
@@ -129,12 +140,24 @@ function simulate_environment(environment;
                 curr_y = env.state[2]
                 if environment == :mcr
                     curr_y = minimum([en.state[2] for en ∈ env.envs])    
+                    vs = [norm(en.state[4:5]) for en ∈ env.envs]
+                    βs = [abs(calculate_β(en)) for en ∈ env.envs]
+                else
+                    vs = norm(env.state[4:5])
+                    βs = abs(calculate_β(env))
                 end
-                if step_rew < -8000
-                    viol += 1
+                push!(v_mean_log, mean(vs))
+                push!(v_max_log, maximum(vs))
+                push!(β_mean_log, mean(βs))
+                push!(β_max_log, maximum(βs))
+                
+                if step_rew < -4000
+                    if exceed_β(env) β_viol += 1 end
+                    if !within_track(env) trk_viol += 1 end
                 end
+
                 if environment == :mcr
-                    # Exact, but should work
+                    # Not exact, but should work
                     d = minimum([norm(en.state[1:2]) for en ∈ env.envs])
                 else
                     d = norm(env.state[1:2])
@@ -144,7 +167,7 @@ function simulate_environment(environment;
                     lap += 1
                     lap_time[lap] = cnt
                 end
-                if lap >= laps || viol > 10
+                if lap >= laps || trk_viol > 10 || β_viol > 50
                     env.done = true
                 end
                 prev_y = curr_y
@@ -158,22 +181,64 @@ function simulate_environment(environment;
             print("\e[2K") # clear whole line
             print("\e[1G") # move cursor to column 1
         end
+
         @printf("Trial %4d: %12.1f : %6d", k, rew, cnt-1)
         if environment ∈ (:cr, :mcr)
             for ii ∈ 1:laps
                 @printf(" : %5d", lap_time[ii])
             end
-            @printf(" : %6d", viol)
+            @printf(" : %6.2f : %6.2f", mean(v_mean_log), maximum(v_max_log))
+            @printf(" : %6.2f : %6.2f",  mean(β_mean_log), maximum(β_max_log))
+            @printf(" : %6d : %6d", β_viol, trk_viol)
         end
+
         time_end = Dates.now()
         seconds_ran = Dates.value(time_end - time_start) / 1000
         @printf(" : %7.2f", seconds_ran)
         @printf("\n")
 
-        rews += rew
-        steps += cnt-1
+        rews[k] = rew
+        steps[k] = cnt-1
+        exec_times[k] = seconds_ran 
+        if environment ∈ (:cr, :mcr)
+            for ii ∈ 1:laps
+                lap_ts[ii][k] = lap_time[ii]
+            end
+            mean_vs[k] = mean(v_mean_log)
+            max_vs[k] = maximum(v_max_log)
+            mean_βs[k] = mean(β_mean_log)
+            max_βs[k] = maximum(β_max_log)
+            β_viols[k] = β_viol
+            T_viols[k] = trk_viol
+        end        
+
     end
-    @printf("Trial %4s: %12.1f : %6.1f\n", "Ave", rews/num_trials, steps/num_trials)
+
+    @printf("-----------------------------------\n")
+
+    @printf("Trials %3s: %12.1f : %6.1f", "AVE", mean(rews), mean(steps))
+    if environment ∈ (:cr, :mcr)
+        for ii ∈ 1:laps
+            @printf(" : %5d", mean(lap_ts[ii]))
+        end
+        @printf(" : %6.2f : %6.2f", mean(mean_vs), mean(max_vs))
+            @printf(" : %6.2f : %6.2f",  mean(mean_βs), mean(max_βs))
+            @printf(" : %6d : %6d", mean(β_viols), mean(T_viols))
+    end
+    @printf(" : %7.2f\n", mean(exec_times))
+    
+    @printf("Trials %3s: %12.1f : %6.1f", "STD", std(rews), std(steps))
+    if environment ∈ (:cr, :mcr)
+        for ii ∈ 1:laps
+            @printf(" : %5d", std(lap_ts[ii]))
+        end
+        @printf(" : %6.2f : %6.2f", std(mean_vs), std(max_vs))
+            @printf(" : %6.2f : %6.2f",  std(mean_βs), std(max_βs))
+            @printf(" : %6d : %6d", std(β_viols), std(T_viols))
+    end
+    @printf(" : %7.2f\n", std(exec_times))
+
+
     if save_gif
         println("Saving gif...$gif_name")
         gif(anim, gif_name, fps=10)
@@ -242,7 +307,8 @@ function get_policy(env, policy_type,
     return pol
 end
 
-for ii = 4:6
+
+for ii = 1:1
 
     # if ii == 1
     #     p_type = :mppi
@@ -253,101 +319,87 @@ for ii = 4:6
     #     ns = 1500
     #     traj_p = 0.5
     # elseif ii == 3
-        p_type = :cemppi
-        ns = 150
-        traj_p = 1.0
-    # else
-    #     error("Something isn't right")
-    # end
 
-    run_num = 4
+    sim_type            = :cr
+    num_cars            = 1
+    n_trials            = 5
+    laps                = 2
 
+    p_type              = :mppi
+    n_steps             = 40
+    n_samp              = 500
+    horizon             = 50
+    λ                   = 0.5
+    α                   = 1.0
+    ce_its              = 10
+    ce_elite_threshold  = 0.8
+    U₀ = zeros(Float64, num_cars*2)
+    cov_mat = block_diagm([0.0625, 0.1], num_cars)
 
-    if run_num == 1
-        simulate_environment(:cr, 
-            num_steps = 1350, 
-            num_trials = 2, 
-            laps = 2,
+    plot_steps          = false
+    pol_log             = false
+    plot_traj           = false
+    traj_p              = 1.0
+    save_gif            = false
 
-            policy_type=:mppi, 
-            num_samples=1500, 
-            horizon=50,  
-            
-            λ = 0.5,
-            α = 1.0,
-            U₀ = [0.0, 0.0],
-            cov_mat = block_diagm([0.0625, 0.1], 1),
-            
-            ce_its = 10,
-            ce_elite_threshold = 0.8,
+    println("Sim Type:              $sim_type")
+    println("Num Cars:              $num_cars")
+    println("Trials:                $n_trials")
+    println("Laps:                  $laps")
+    println("Policy Type:           $p_type")
+    println("# Samples:             $n_samp")
+    println("Horizon:               $horizon")
+    println("λ:                     $λ")
+    println("α:                     $α")
+    println("CE Iterations:         $ce_its")
+    println("CE Elite Threshold:    $ce_elite_threshold")
+    println("U₀:                    zeros(Float64, num_cars*2)")
+    println("Σ:                     block_diagm([0.0625, 0.1], num_cars)")
+    println()
 
-            pol_log=true,
-            plot_traj=true,
-            plot_traj_perc = 0.5,
+    simulate_environment(:cr, 
+        num_steps = n_steps, 
+        num_trials = n_trials, 
+        laps = laps,
+        policy_type=p_type, 
+        num_samples=n_samp, 
+        horizon=horizon,  
+        λ = λ,
+        α = α,
+        U₀ = U₀,
+        cov_mat = cov_mat,
+        ce_its = ce_its,
+        ce_elite_threshold = ce_elite_threshold,
+        pol_log=pol_log,
+        plot_traj=plot_traj,
+        plot_traj_perc = traj_p,
+        save_gif=save_gif, 
+        plot_steps=plot_steps,
+    )
 
-            save_gif=true, 
-            plot_steps=false,
-        )
-    elseif run_num == 2
-        simulate_environment(:mc, 
-            num_steps=200, 
-            num_trials=1, 
-            policy_type=:cemppi, 
-            num_samples=100, 
-            horizon=15, 
-            continuous=true, 
-            U₀=[0.0], 
-
-            pol_log=true,
-
-            save_gif=false, 
-            plot_steps=false
-        )
-    elseif run_num == 3
-        simulate_environment(:cp, 
-            num_steps=200, 
-            num_trials=1, 
-            policy_type=:cemppi, 
-            num_samples=100, 
-            horizon=15, 
-            continuous=true, 
-            U₀=[0.0], 
-
-            pol_log=true,
-
-            save_gif=false, 
-            plot_steps=false
-        )
-    elseif run_num == 4
-        num_cars = ii
-        U₀ = zeros(Float64, num_cars*2)
-        cov_mat = block_diagm([0.0625, 0.1], num_cars)
-
-        simulate_environment(:mcr, 
-            num_steps = 2000, 
-            num_trials = 2, 
-            laps = 2,
-            num_cars = num_cars,
-
-            policy_type = p_type, 
-            num_samples = ns, 
-            horizon=50,  
-            
-            λ = 0.5,
-            α = 1.0,
-            U₀ = U₀,
-            cov_mat = cov_mat,
-            
-            ce_its = 10,
-            ce_elite_threshold = 0.8,
-
-            pol_log=true,
-            plot_traj=true,
-            plot_traj_perc = traj_p,
-
-            save_gif=true, 
-            plot_steps=false,
-        )
-    end
+    # simulate_environment(:mc, 
+    #     num_steps=200, 
+    #     num_trials=1, 
+    #     policy_type=:cemppi, 
+    #     num_samples=100, 
+    #     horizon=15, 
+    #     continuous=true, 
+    #     U₀=[0.0], 
+    #     pol_log=true,
+    #     save_gif=false, 
+    #     plot_steps=false
+    # )
+    # simulate_environment(:cp, 
+    #     num_steps=200, 
+    #     num_trials=1, 
+    #     policy_type=:cemppi, 
+    #     num_samples=100, 
+    #     horizon=15, 
+    #     continuous=true, 
+    #     U₀=[0.0], 
+    #     pol_log=true,
+    #     save_gif=false, 
+    #     plot_steps=false
+    # )
 
 end

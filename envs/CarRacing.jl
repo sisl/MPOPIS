@@ -186,6 +186,15 @@ RLBase.state(env::CarRacingEnv) = env.state
 function within_track(env::CarRacingEnv)
     return within_track(env.track, env.state[1:2])
 end
+function calculate_β(env::CarRacingEnv)
+    return atan(env.state[5], env.state[4])
+end
+function exceed_β(env::CarRacingEnv)
+    if abs(calculate_β(env)) > env.params.β_limit
+        return true
+    end
+    return false
+end
 
 """
     reward(env::CarRacingEnv)
@@ -196,16 +205,15 @@ end
     - Speed             : +2.0 * (Vx² + Vy²)^(1/2)
 """
 function RLBase.reward(env::CarRacingEnv{T}) where {T} 
-    reward = 0.0
+    rew = 0.0
     if !within_track(env)
-        reward += -10000.0
+        rew += -10000.0
     end
-    β = atan(env.state[5], env.state[4])
-    if abs(β) > env.params.β_limit
-        reward += -5000.0
+    if exceed_β(env)
+        rew += -5000.0
     end
-    reward += 2.0*norm(env.state[4:5])
-    return reward
+    rew += 2.0*norm(env.state[4:5])
+    return rew
 end
 
 function RLBase.reset!(env::CarRacingEnv{A,T}) where {A,T}

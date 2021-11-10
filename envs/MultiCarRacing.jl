@@ -120,6 +120,15 @@ function within_track(env::MultiCarRacingEnv)
     return within
 end
 
+function exceed_β(env::MultiCarRacingEnv)
+    exceed = false
+    for en in env.envs
+        exceed = exceed || exceed_β(en)
+    end
+    return exceed
+end
+
+
 """
     reward(env::MultiCarRacingEnv)
     - Sum over rewards of the ohter envrionments
