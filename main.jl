@@ -320,8 +320,8 @@ for ii = 1:1
     #     traj_p = 0.5
     # elseif ii == 3
 
-    sim_type            = :mcr
-    num_cars            = 2
+    sim_type            = :cr
+    num_cars            = 1
     n_trials            = 5
     laps                = 2
 
@@ -353,11 +353,12 @@ for ii = 1:1
     println("α:                     $α")
     println("CE Iterations:         $ce_its")
     println("CE Elite Threshold:    $ce_elite_threshold")
-    println("U₀:                    zeros(Float64, num_cars*2)")
-    println("Σ:                     block_diagm([0.0625, 0.1], num_cars)")
+    println("U₀:                    zeros(Float64, $(num_cars*2))")
+    println("Σ:                     block_diagm([0.0625, 0.1], $num_cars)")
     println()
 
     simulate_environment(sim_type, 
+        num_cars = num_cars,
         num_steps = n_steps, 
         num_trials = n_trials, 
         laps = laps,
