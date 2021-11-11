@@ -267,13 +267,13 @@ function get_environment(environment::Symbol;
     num_cars::Int = 2,
 )
     if environment == :cp
-        env = CartPoleEnv(continuous=continuous)
+        env = CartPoleEnv(continuous=continuous, rng=MersenneTwister())
     elseif environment == :mc
-        env = MountainCarEnv(continuous=continuous)
+        env = MountainCarEnv(continuous=continuous, rng=MersenneTwister())
     elseif environment == :cr
-        env = CarRacingEnv()
+        env = CarRacingEnv(rng=MersenneTwister())
     elseif environment == :mcr
-        env = MultiCarRacingEnv(num_cars)
+        env = MultiCarRacingEnv(num_cars, rng=MersenneTwister())
     else
         error("Not implemented for $environment")
     end
@@ -293,6 +293,7 @@ function get_policy(env, policy_type,
             U₀=U₀,
             cov_mat=cov_mat,
             log=pol_log,
+            rng=MersenneTwister(),
             )
     elseif policy_type == :cemppi
         pol = CEMPPI_Policy(env, 
@@ -307,6 +308,7 @@ function get_policy(env, policy_type,
             Σ_est_target = DiagonalUnequalVariance(),
             Σ_est_shrinkage = :lw,
             log=pol_log,
+            rng=MersenneTwister(),
             )
     elseif policy_type == :mppi
         pol = MPPI_Policy(env, 
@@ -317,6 +319,7 @@ function get_policy(env, policy_type,
             U₀=U₀,
             cov_mat=cov_mat,
             log=pol_log,
+            rng=MersenneTwister(),
             )
     else
         error("No policy_type of $policy_type")
