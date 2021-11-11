@@ -189,6 +189,8 @@ function (pol::AbstractGMPPI_Policy)(env::AbstractEnv)
     cs = pol.params.cs
     
     trajectory_cost, E = calculate_trajectory_costs(pol, env)
+    # trajectory_cost, E = calc_traj_costs_w_minmax_samples(pol, env)
+    
 
     # Compute weights based on weight method
     weights = compute_weights(pol.params.weight_method, trajectory_cost) 
@@ -308,6 +310,66 @@ function calculate_trajectory_costs(pol::CEMPPI_Policy, env::AbstractEnv)
     return trajectory_cost, E
 end
 
+function calc_traj_costs_w_minmax_samples(pol::CEMPPI_Policy, env::AbstractEnv)
+    K = pol.params.num_samples
+    N = pol.ce_its
+    m_elite = round(Int, K*(1-pol.ce_elite_threshold))
+
+    # Initial covariance of distribution
+    U_orig = pol.U
+    Σ′ = pol.Σ
+    P = Distributions.MvNormal(Σ′)
+    E = rand(pol.rng, P, K)
+
+    trajectory_cost = zeros(Float64, K)
+    # Optimize sample distribution and get trajectory costs
+    for n ∈ 1:N
+        # Get samples for which our trajectories will be defined
+        P = Distributions.MvNormal(Σ′)
+        E = rand(pol.rng, P, K)
+        Σ_inv = Distributions.invcov(P)
+
+        if n == 1
+            ΔE = get_minmax_control_Δ(pol, env)
+            num_minmax_u = size(ΔE, 2)
+            E[:, 1:num_minmax_u] = ΔE
+        end
+
+        # Use the samples to simulate our model to get the costs
+        trajectory_cost = simulate_model(pol, env, E, Σ_inv, U_orig)
+
+        if n < N
+            # Reorder, select elite samples, fit new distribution
+            order = sortperm(trajectory_cost)
+            elite = E[:, order[1:m_elite]]
+            
+            elite_traj_cost = trajectory_cost[order[1:m_elite]]
+            if maximum(abs.(diff(elite_traj_cost, dims=1))) < 10e-3
+                break
+            end
+
+            # Transposing elite based on needed format (n x p)
+            Σ′ = cov(pol.Σ_estimation_method, elite') + 10e-9*I
+            pol.U = pol.U + vec(mean(elite, dims=2))
+        end
+    end
+
+    return trajectory_cost, E
+end
+
+function get_minmax_control_Δ(pol::AbstractPathIntegralPolicy, env::AbstractEnv)
+    min_max_controls = get_min_max_control_set(
+        action_space(env), pol.params.horizon)
+    # Matrix size of (cs x number of augmented sample size)
+    ΔU = Matrix{Float64}(undef, pol.params.cs, length(min_max_controls))
+    
+    for ii ∈ 1:length(min_max_controls)
+        uᵢ = vec(reshape(min_max_controls[ii], :, 1))
+        ΔU[:, ii] = uᵢ - pol.U
+    end
+    return ΔU
+end
+
 function simulate_model(pol::AbstractGMPPI_Policy, env::AbstractEnv, 
     E::Matrix{Float64}, Σ_inv::Matrix{Float64}, U_orig::Vector{Float64},
 )
@@ -319,7 +381,7 @@ function simulate_model(pol::AbstractGMPPI_Policy, env::AbstractEnv,
     Threads.@threads for k ∈ 1:K
         sim_env = copy(env) # Slower, but allows for multi threading
         Vₖ = pol.U + E[:,k]
-        control_cost = γ * U_orig'*Σ_inv*(Vₖ .- U_orig) #E[:,k]
+        control_cost = γ * U_orig'*Σ_inv*(Vₖ .- U_orig) 
         model_controls = get_model_controls(action_space(sim_env), Vₖ, T)
         trajectory_cost[k] = rollout_model(sim_env, T, model_controls, pol, k)
         trajectory_cost[k] += control_cost  # Adding based on "cost"

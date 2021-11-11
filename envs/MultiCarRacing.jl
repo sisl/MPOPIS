@@ -83,6 +83,7 @@ end
 
 MultiCarRacingEnv{T}(; kwargs...) where {T} = MultiCarRacingEnv(; T = T, kwargs...)
 
+# Might not want to have the same seed for every envrionment here
 function Random.seed!(env::MultiCarRacingEnv, seed)
     for en in env.envs
         Random.seed!(en.rng, seed)

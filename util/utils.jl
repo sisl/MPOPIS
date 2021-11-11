@@ -62,11 +62,33 @@ function get_model_controls(action_space::Base.OneTo, V::Vector{Float64}, horizo
     as = 1
     min_controls = minimum(action_space)
     max_controls = maximum(action_space)
-
+    
     control_mat = reshape(V, as, horizon)
     control_mat[1,:] = clamp.(control_mat[1,:], min_controls, max_controls)
     control_mat = round.(Int, vec(control_mat))
     return control_mat
+end
+
+function all_perm(xs, n) 
+    return vec(map(collect, Iterators.product(ntuple(_ -> xs, n)...)))
+end
+
+function get_min_max_control_set(action_space::ClosedInterval, horizon::Int)
+    as = action_space_size(action_space)
+    min_controls = leftendpoint(action_space)
+    max_controls = rightendpoint(action_space)
+    min_max_mat = hcat(min_controls, max_controls)
+    U = Vector{Matrix{Float64}}(undef, 2^as + 1)
+    min_max_controls = all_perm([1, 2], as)
+    control_vec = zeros(Float64, as)
+    for ii ∈ 1:length(min_max_controls)
+        for aᵢ ∈ 1:as
+            control_vec[aᵢ] = min_max_mat[aᵢ, min_max_controls[ii][aᵢ]]
+        end
+        U[ii] = repeat(control_vec, 1, horizon)
+    end
+    U[end] = repeat(mean(min_max_mat, dims=2), 1, horizon)
+    return U
 end
 
 function compute_weights(weight_method::Information_Theoretic, costs::Vector{Float64})
