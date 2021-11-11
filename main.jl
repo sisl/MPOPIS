@@ -59,7 +59,7 @@ function simulate_environment(environment;
     α = 1.0,
     U₀ = [0.0],
     cov_mat = [1.5],
-    ce_its = 10,
+    opt_its = 10,
     ce_elite_threshold = 0.8,
     pol_log = false,
     )
@@ -68,7 +68,7 @@ function simulate_environment(environment;
     cov_v = cov_mat[1,1]
     gif_name = gif_name * "$cov_v-"
     if policy_type == :cemppi
-        gif_name = gif_name * "$ce_its-$ce_elite_threshold-"
+        gif_name = gif_name * "$opt_its-$ce_elite_threshold-"
     end
     gif_name = gif_name * "$num_trials-$laps.gif"
 
@@ -107,7 +107,7 @@ function simulate_environment(environment;
         env = get_environment(environment, 
             continuous=continuous, num_cars=num_cars);
         pol = get_policy(env, policy_type, num_samples, horizon,
-                λ, α, U₀, cov_mat, ce_its, ce_elite_threshold,
+                λ, α, U₀, cov_mat, opt_its, ce_elite_threshold,
                 pol_log,
         )
         seed!(env, 36)
@@ -282,7 +282,7 @@ end
 
 function get_policy(env, policy_type,
     num_samples, horizon, λ, α, U₀, cov_mat, 
-    ce_its, ce_elite_threshold, pol_log,
+    opt_its, ce_elite_threshold, pol_log,
 )
     if policy_type == :gmppi
         pol = GMPPI_Policy(env, 
@@ -303,7 +303,7 @@ function get_policy(env, policy_type,
             α=α,
             U₀=U₀,
             cov_mat=cov_mat,
-            ce_its=ce_its,
+            opt_its=opt_its,
             ce_elite_threshold=ce_elite_threshold,
             Σ_est_target = DiagonalUnequalVariance(),
             Σ_est_shrinkage = :lw,
@@ -332,24 +332,24 @@ for ii = 1:1
 
     pol_type = :gmppi
     ns = 1500
-    ceIts = 10
+    oIts = 10
 
     # if ii == 1
     #     pol_type = :cemppi
     #     ns = 300
-    #     ceIts = 5
+    #     oIts = 5
     # elseif ii == 2
     #     pol_type = :cemppi
     #     ns = 500
-    #     ceIts = 3
+    #     oIts = 3
     # elseif ii == 3
     #     pol_type = :cemppi
     #     ns = 750
-    #     ceIts = 2
+    #     oIts = 2
     # elseif ii == 4
     #     pol_type = :cemppi
     #     ns = 1500
-    #     ceIts = 1
+    #     oIts = 1
     # end
 
     sim_type            = :cr
@@ -363,7 +363,7 @@ for ii = 1:1
     horizon             = 50
     λ                   = 0.5
     α                   = 1.0
-    ce_its              = ceIts
+    opt_its             = oIts
     ce_elite_threshold  = 0.8
     U₀                  = zeros(Float64, num_cars*2)
     cov_mat             = block_diagm([0.0625, 0.1], num_cars)
@@ -383,7 +383,7 @@ for ii = 1:1
     println("Horizon:               $horizon")
     println("λ:                     $λ")
     println("α:                     $α")
-    println("CE Iterations:         $ce_its")
+    println("OptCE Iterations:      $opt_its")
     println("CE Elite Threshold:    $ce_elite_threshold")
     println("U₀:                    zeros(Float64, $(num_cars*2))")
     println("Σ:                     block_diagm([0.0625, 0.1], $num_cars)")
@@ -401,7 +401,7 @@ for ii = 1:1
         α = α,
         U₀ = U₀,
         cov_mat = cov_mat,
-        ce_its = ce_its,
+        opt_its = opt_its,
         ce_elite_threshold = ce_elite_threshold,
         pol_log=pol_log,
         plot_traj=plot_traj,
