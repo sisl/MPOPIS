@@ -110,8 +110,8 @@ function simulate_environment(environment;
                 λ, α, U₀, cov_mat, ce_its, ce_elite_threshold,
                 pol_log,
         )
-        seed!(env, k)
-        seed!(pol, k)
+        seed!(env, 36)
+        seed!(pol, 36)
         
         pm = Progress(num_steps, 1, "Trial $k ....", 50)
         
@@ -327,35 +327,49 @@ end
 
 for ii = 1:1
 
+    pol_type = :gmppi
+    ns = 1500
+    ceIts = 10
+
     # if ii == 1
-    #     p_type = :gmppi
-    #     ns = 1500
+    #     pol_type = :cemppi
+    #     ns = 300
+    #     ceIts = 5
     # elseif ii == 2
-    #     p_type = :cemppi
+    #     pol_type = :cemppi
+    #     ns = 500
+    #     ceIts = 3
+    # elseif ii == 3
+    #     pol_type = :cemppi
+    #     ns = 750
+    #     ceIts = 2
+    # elseif ii == 4
+    #     pol_type = :cemppi
     #     ns = 1500
+    #     ceIts = 1
     # end
 
-    sim_type            = :mcr
-    num_cars            = 2
-    n_trials            = 5
-    laps                = 3
+    sim_type            = :cr
+    num_cars            = 1
+    n_trials            = 1
+    laps                = 2
 
-    p_type              = :gmppi
-    n_steps             = 40
-    n_samp              = 150
+    p_type              = pol_type
+    n_steps             = 2000
+    n_samp              = ns
     horizon             = 50
     λ                   = 0.5
     α                   = 1.0
-    ce_its              = 10
+    ce_its              = ceIts
     ce_elite_threshold  = 0.8
-    U₀ = zeros(Float64, num_cars*2)
-    cov_mat = block_diagm([0.0625, 0.1], num_cars)
+    U₀                  = zeros(Float64, num_cars*2)
+    cov_mat             = block_diagm([0.0625, 0.1], num_cars)
 
     plot_steps          = false
-    pol_log             = false
-    plot_traj           = false
+    pol_log             = true
+    plot_traj           = true
     traj_p              = 1.0
-    save_gif            = false
+    save_gif            = true
 
     println("Sim Type:              $sim_type")
     println("Num Cars:              $num_cars")
