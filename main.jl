@@ -64,6 +64,7 @@ function simulate_environment(environment;
     min_max_sample_perc = 0.1,
     step_factor = 0.01,
     pol_log = false,
+    seeded=nothing,
     )
 
     gif_name = "$environment-$num_cars-$policy_type-$num_samples-$horizon-$λ-$α-"
@@ -113,8 +114,13 @@ function simulate_environment(environment;
                 λ, α, U₀, cov_mat, opt_its, ce_elite_threshold,
                 min_max_sample_perc, step_factor, pol_log,
         )
-        seed!(env, k)
-        seed!(pol, k)
+        if isnothing(seeded)
+            seed!(env, k)
+            seed!(pol, k)
+        else
+            seed!(env, seeded)
+            seed!(pol, seeded)
+        end
         
         pm = Progress(num_steps, 1, "Trial $k ....", 50)
         
@@ -354,6 +360,7 @@ for ii = 1:1
     pol_type = :cemppi
     ns = 150
     oIts = 10
+    λ = 10.0
 
     # if ii == 1
     #     pol_type = :cemppi
@@ -373,23 +380,25 @@ for ii = 1:1
     #     oIts = 1
     # end
 
-    sim_type            = :mcr
-    num_cars            = 5
+    sim_type            = :cr
+    num_cars            = 1
     n_trials            = 1
     laps                = 2
 
     p_type              = pol_type
-    n_steps             = 25
+    n_steps             = 2000
     n_samp              = ns
     horizon             = 50
-    λ                   = 0.5
+    λ                   = λ
     α                   = 1.0
     opt_its             = oIts
     ce_elite_threshold  = 0.8
-    min_max_sample_p    = 0.1 
+    min_max_sample_p    = 0.0 
     step_factor         = 0.0001
     U₀                  = zeros(Float64, num_cars*2)
     cov_mat             = block_diagm([0.0625, 0.1], num_cars)
+
+    seeded              = nothing
 
     plot_steps          = false
     pol_log             = false
@@ -412,6 +421,7 @@ for ii = 1:1
     println("NES Step Factor        $step_factor")
     println("U₀:                    zeros(Float64, $(num_cars*2))")
     println("Σ:                     block_diagm([0.0625, 0.1], $num_cars)")
+    println("Seeded:                $seeded")
     println()
 
     simulate_environment(sim_type, 
@@ -435,6 +445,7 @@ for ii = 1:1
         plot_traj_perc = traj_p,
         save_gif=save_gif, 
         plot_steps=plot_steps,
+        seeded=seeded,
     )
 
     # simulate_environment(:mc, 
