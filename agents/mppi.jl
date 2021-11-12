@@ -24,6 +24,7 @@ struct MPPI_Policy_Params{M<:AbstractWeightMethod}
     as::Int
     cs::Int
     weight_method::M
+    min_max_sample_threshold::Int
     log::Bool
 end
 
@@ -59,11 +60,12 @@ end
 
 mutable struct NESMPPI_Policy{R<:AbstractRNG} <: AbstractGMPPI_Policy
     params::MPPI_Policy_Params
+    env::AbstractEnv
     U::Vector{Float64}
     Σ::Matrix{Float64}
     A::Matrix{Float64}
     opt_its::Int
-    nes_step_factor::Float64
+    step_factor::Float64
     rng::R
     logger::MPPI_Logger
 end
@@ -77,6 +79,7 @@ function get_MPPI_policy_params(env::AbstractEnv, type::Symbol;
     cov_mat::Union{Matrix{Float64},Vector{Float64}} = [1.0],
     weight_method::Symbol = :IT,
     elite_threshold::Float64 = 0.8,
+    min_max_sample_perc::Float64 = 0.1,
     rng::AbstractRNG = Random.GLOBAL_RNG,
     log::Bool = false,
 )
@@ -116,12 +119,17 @@ function get_MPPI_policy_params(env::AbstractEnv, type::Symbol;
         error("No cost method implemented for $weight_method")
     end
 
+    min_max_sample_threshold = round(Int, num_samples*min_max_sample_perc)
+    
     log_traj = [Matrix{Float64}(undef, (horizon, ss)) for _ in 1:num_samples]
     log_traj_costs = Vector{Float64}(undef, num_samples)
     log_traj_weights = Vector{Float64}(undef, num_samples)
     mppi_logger = MPPI_Logger(log_traj, log_traj_costs, log_traj_weights)
 
-    params = MPPI_Policy_Params(num_samples, horizon, λ, α, U₀, ss, as, cs, weight_m, log)
+    params = MPPI_Policy_Params(
+        num_samples, horizon, λ, α, U₀, ss, as, cs, 
+        weight_m, min_max_sample_threshold, log
+    )
     return params, U₀, Σ, rng, mppi_logger
 end
 
@@ -168,12 +176,12 @@ end
 
 function NESMPPI_Policy(env::AbstractEnv;
     opt_its::Int = 10,
-    nes_step_factor::Float64 = 0.01,
+    step_factor::Float64 = 0.01,
     kwargs...
 )
     params, U₀, Σ, rng, mppi_logger = get_MPPI_policy_params(env, :gmppi; kwargs...)
     A = sqrt(Σ)
-    pol = NESMPPI_Policy(params, U₀, Σ, A, new_its, news_step_factor, rng, mppi_logger)
+    pol = NESMPPI_Policy(params, env, U₀, Σ, A, opt_its, step_factor, rng, mppi_logger)
     return pol
 end
 
@@ -182,10 +190,7 @@ Random.seed!(pol::AbstractPathIntegralPolicy, seed) = Random.seed!(pol.rng, seed
 function (pol::MPPI_Policy)(env::AbstractEnv)
     K, T = pol.params.num_samples, pol.params.horizon
     as, cs = pol.params.as, pol.params.cs
-    
-    # trajectory_cost, E = calculate_trajectory_costs(pol, env)
-    trajectory_cost, E = calc_traj_costs_w_minmax_samples(pol, env)
-
+    trajectory_cost, E = calculate_trajectory_costs(pol, env)
     
     # Compute weights based on weight method
     weights = compute_weights(pol.params.weight_method, trajectory_cost) 
@@ -211,10 +216,8 @@ end
 
 function (pol::AbstractGMPPI_Policy)(env::AbstractEnv)
     cs = pol.params.cs
+    trajectory_cost, E = calculate_trajectory_costs(pol, env)
     
-    # trajectory_cost, E = calculate_trajectory_costs(pol, env)
-    trajectory_cost, E = calc_traj_costs_w_minmax_samples(pol, env)
-
     # Compute weights based on weight method
     weights = compute_weights(pol.params.weight_method, trajectory_cost) 
     
@@ -230,7 +233,6 @@ function (pol::AbstractGMPPI_Policy)(env::AbstractEnv)
         pol.logger.traj_costs = trajectory_cost
         pol.logger.traj_weights = weights
     end
-
     return control
 end
 
@@ -258,14 +260,34 @@ function calculate_trajectory_costs(pol::MPPI_Policy, env::AbstractEnv)
     P = Distributions.MvNormal(pol.Σ)
     E = rand(pol.rng, P, K, T)
     Σ_inv = Distributions.invcov(P)
-    trajectory_cost = zeros(Float64, K)
+    
+    # Get a few "extreme" samples for our distribution
+    if pol.params.min_max_sample_threshold > 0
+        ΔE = get_minmax_control_Δ(pol, env)
+        num_minmax_u = size(ΔE, 2)
+        num_minmax_samples = min(num_minmax_u, pol.params.min_max_sample_threshold)
 
+        if num_minmax_u > pol.params.min_max_sample_threshold
+            sample_idxs = sample(2:(num_minmax_u-1), pol.params.min_max_sample_threshold-3)
+            # Add in the all max, all min, and mean controls
+            sample_idxs = vcat(sample_idxs, [1, num_minmax_u-1, num_minmax_u])
+        else 
+            sample_idxs = 1:num_minmax_u
+        end
+        ΔE = ΔE[:, sample_idxs]
+    end
+    
+    trajectory_cost = zeros(Float64, K)
     Threads.@threads for k ∈ 1:K
         sim_env = copy(env) # Slower, but allows for multi threading
         for t ∈ 1:T
+            Eᵢ = E[k,t]
+            if pol.params.min_max_sample_threshold > 0 && k <= num_minmax_samples
+                Eᵢ = ΔE[((t-1)*as+1):(t*as), k]
+            end
             uₜ = pol.U[((t-1)*as+1):(t*as)]
-            Vₜ = uₜ + E[k,t]
-            control_cost = γ * uₜ'*Σ_inv*E[k,t]  
+            Vₜ = uₜ + Eᵢ
+            control_cost = γ * uₜ'*Σ_inv*Eᵢ
             model_controls = get_model_controls(action_space(sim_env), Vₜ)
             sim_env(model_controls)
             # Subtrating based on "reward", Adding based on "cost"
@@ -286,6 +308,20 @@ function calculate_trajectory_costs(pol::GMPPI_Policy, env::AbstractEnv)
     E = rand(pol.rng, P, K)
     Σ_inv = Distributions.invcov(P)
 
+    if pol.params.min_max_sample_threshold > 0
+        ΔE = get_minmax_control_Δ(pol, env)
+        num_minmax_u = size(ΔE, 2)
+        num_minmax_samples = min(num_minmax_u, pol.params.min_max_sample_threshold)
+        if num_minmax_u > pol.params.min_max_sample_threshold
+            sample_idxs = sample(2:(num_minmax_u-1), pol.params.min_max_sample_threshold-3)
+            # Add in the all max, all min, and mean controls
+            sample_idxs = vcat(sample_idxs, [1, num_minmax_u-1, num_minmax_u])
+        else 
+            sample_idxs = 1:num_minmax_u
+        end
+        E[:, 1:num_minmax_samples] = ΔE[:, sample_idxs]
+    end
+
     # Use the samples to simulate our model to get the costs
     trajectory_cost = simulate_model(pol, env, E, Σ_inv, pol.U)
 
@@ -300,8 +336,6 @@ function calculate_trajectory_costs(pol::CEMPPI_Policy, env::AbstractEnv)
     # Initial covariance of distribution
     U_orig = pol.U
     Σ′ = pol.Σ
-    P = Distributions.MvNormal(Σ′)  # Can remove (see next comment)
-    E = rand(pol.rng, P, K)         # Can remove, but keeping for consistency of "noise" in analysis
 
     trajectory_cost = zeros(Float64, K)
     # Optimize sample distribution and get trajectory costs
@@ -310,6 +344,21 @@ function calculate_trajectory_costs(pol::CEMPPI_Policy, env::AbstractEnv)
         P = Distributions.MvNormal(Σ′)
         E = rand(pol.rng, P, K)
         Σ_inv = Distributions.invcov(P)
+
+        # Get a few "extreme" samples for our distribution
+        if n == 1 && pol.params.min_max_sample_threshold > 0
+            ΔE = get_minmax_control_Δ(pol, env)
+            num_minmax_u = size(ΔE, 2)
+            num_minmax_samples = min(num_minmax_u, pol.params.min_max_sample_threshold)
+            if num_minmax_u > pol.params.min_max_sample_threshold
+                sample_idxs = sample(2:(num_minmax_u-1), pol.params.min_max_sample_threshold-3)
+                # Add in the all max, all min, and mean controls
+                sample_idxs = vcat(sample_idxs, [1, num_minmax_u-1, num_minmax_u])
+            else 
+                sample_idxs = 1:num_minmax_u
+            end
+            E[:, 1:num_minmax_samples] = ΔE[:, sample_idxs]
+        end
 
         # Use the samples to simulate our model to get the costs
         trajectory_cost = simulate_model(pol, env, E, Σ_inv, U_orig)
@@ -353,111 +402,30 @@ function calculate_trajectory_costs(pol::NESMPPI_Policy, env::AbstractEnv)
 
         # Use the samples to simulate our model to get the costs
         trajectory_cost = simulate_model(pol, env, E, Σ_inv, U_orig)
+        if maximum(abs.(diff(trajectory_cost, dims=1))) < 10e-3
+            break
+        end
 
         if n < N
-            # Calcualte ∇log(x|μ,Σ)
-            
-            elite_traj_cost = trajectory_cost[order[1:m_elite]]
-            if maximum(abs.(diff(elite_traj_cost, dims=1))) < 10e-3
-                break
+            ∇μlog_p_x = zeros(Float64, size(pol.U))
+            ∇Alog_p_x = zeros(Float64, size(pol.Σ))
+            for k ∈ 1:K
+                ∇μlog_p_x .+= Σ_inv * E[:,k] .* trajectory_cost[k]
+                ∇Σlog_p_x = 1/2*Σ_inv*E[:,k]*E[:,k]'*Σ_inv - 1/2*Σ_inv
+                ∇Alog_p_x += A′*(∇Σlog_p_x + ∇Σlog_p_x') * trajectory_cost[k]
             end
-
-            # Transposing elite based on needed format (n x p)
-            Σ′ = cov(pol.Σ_estimation_method, elite') + 10e-9*I
-            pol.U = pol.U + vec(mean(elite, dims=2))
+            A′ -= pol.step_factor/K .* ∇Alog_p_x ./ K
+            Σ′ = A′' * A′
+            pol.U -= pol.step_factor/K .* ∇μlog_p_x
         end
     end
-
-    return trajectory_cost, E
-end
-
-
-function calc_traj_costs_w_minmax_samples(pol::MPPI_Policy, env::AbstractEnv)
-    K, T = pol.params.num_samples, pol.params.horizon
-    as = pol.params.as
-    γ = pol.params.λ*(1-pol.params.α)
-
-    # Get samples for which our trajectories will be defined
-    P = Distributions.MvNormal(pol.Σ)
-    E = rand(pol.rng, P, K, T)
-    Σ_inv = Distributions.invcov(P)
-    trajectory_cost = zeros(Float64, K)
-
-    ΔE = get_minmax_control_Δ(pol, env)
-    num_minmax_u = size(ΔE, 2)
-
-    Threads.@threads for k ∈ 1:K
-        sim_env = copy(env) # Slower, but allows for multi threading
-        for t ∈ 1:T
-            Eᵢ = E[k,t]
-            if k <= num_minmax_u
-                Eᵢ += ΔE[((t-1)*as+1):(t*as), k]
-            end
-            uₜ = pol.U[((t-1)*as+1):(t*as)]
-            Vₜ = uₜ + Eᵢ
-            control_cost = γ * uₜ'*Σ_inv*Eᵢ  
-            model_controls = get_model_controls(action_space(sim_env), Vₜ)
-            sim_env(model_controls)
-            # Subtrating based on "reward", Adding based on "cost"
-            trajectory_cost[k] = trajectory_cost[k] - reward(sim_env) + control_cost
-            if pol.params.log
-                pol.logger.trajectories[k][t, :] = sim_env.state
-            end
-        end
-    end
-    return trajectory_cost, E
-end
-
-function calc_traj_costs_w_minmax_samples(pol::CEMPPI_Policy, env::AbstractEnv)
-    K = pol.params.num_samples
-    N = pol.opt_its
-    m_elite = round(Int, K*(1-pol.ce_elite_threshold))
-
-    # Initial covariance of distribution
-    U_orig = pol.U
-    Σ′ = pol.Σ
-    P = Distributions.MvNormal(Σ′)  # Can remove (see next comment)
-    E = rand(pol.rng, P, K)         # Can remove, but keeping for consistency of "noise" in analysis
-
-    trajectory_cost = zeros(Float64, K)
-    # Optimize sample distribution and get trajectory costs
-    for n ∈ 1:N
-        # Get samples for which our trajectories will be defined
-        P = Distributions.MvNormal(Σ′)
-        E = rand(pol.rng, P, K)
-        Σ_inv = Distributions.invcov(P)
-
-        if n == 1
-            ΔE = get_minmax_control_Δ(pol, env)
-            num_minmax_u = size(ΔE, 2)
-            E[:, 1:num_minmax_u] = ΔE
-        end
-
-        # Use the samples to simulate our model to get the costs
-        trajectory_cost = simulate_model(pol, env, E, Σ_inv, U_orig)
-
-        if n < N
-            # Reorder, select elite samples, fit new distribution
-            order = sortperm(trajectory_cost)
-            elite = E[:, order[1:m_elite]]
-            
-            elite_traj_cost = trajectory_cost[order[1:m_elite]]
-            if maximum(abs.(diff(elite_traj_cost, dims=1))) < 10e-3
-                break
-            end
-
-            # Transposing elite based on needed format (n x p)
-            Σ′ = cov(pol.Σ_estimation_method, elite') + 10e-9*I
-            pol.U = pol.U + vec(mean(elite, dims=2))
-        end
-    end
-
+    E = E .+ (pol.U - U_orig)
+    pol.U = U_orig
     return trajectory_cost, E
 end
 
 function get_minmax_control_Δ(pol::AbstractPathIntegralPolicy, env::AbstractEnv)
-    min_max_controls = get_min_max_control_set(
-        action_space(env), pol.params.horizon)
+    min_max_controls = get_min_max_control_set(action_space(env), pol.params.horizon)
     # Matrix size of (cs x number of augmented sample size)
     ΔU = Matrix{Float64}(undef, pol.params.cs, length(min_max_controls))
     

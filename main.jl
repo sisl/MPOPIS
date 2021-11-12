@@ -61,6 +61,8 @@ function simulate_environment(environment;
     cov_mat = [1.5],
     opt_its = 10,
     ce_elite_threshold = 0.8,
+    min_max_sample_perc = 0.1,
+    step_factor = 0.01,
     pol_log = false,
     )
 
@@ -106,12 +108,13 @@ function simulate_environment(environment;
 
         env = get_environment(environment, 
             continuous=continuous, num_cars=num_cars);
-        pol = get_policy(env, policy_type, num_samples, horizon,
+        pol = get_policy(
+                env, policy_type, num_samples, horizon,
                 λ, α, U₀, cov_mat, opt_its, ce_elite_threshold,
-                pol_log,
+                min_max_sample_perc, step_factor, pol_log,
         )
-        seed!(env, 36)
-        seed!(pol, 36)
+        seed!(env, k)
+        seed!(pol, k)
         
         pm = Progress(num_steps, 1, "Trial $k ....", 50)
         
@@ -280,9 +283,10 @@ function get_environment(environment::Symbol;
     return env
 end
 
-function get_policy(env, policy_type,
-    num_samples, horizon, λ, α, U₀, cov_mat, 
-    opt_its, ce_elite_threshold, pol_log,
+function get_policy(
+    env, policy_type, num_samples, horizon, λ, 
+    α, U₀, cov_mat, opt_its, ce_elite_threshold, 
+    min_max_sample_perc, step_factor, pol_log,
 )
     if policy_type == :gmppi
         pol = GMPPI_Policy(env, 
@@ -292,6 +296,7 @@ function get_policy(env, policy_type,
             α=α,
             U₀=U₀,
             cov_mat=cov_mat,
+            min_max_sample_perc=min_max_sample_perc,
             log=pol_log,
             rng=MersenneTwister(),
             )
@@ -307,6 +312,21 @@ function get_policy(env, policy_type,
             ce_elite_threshold=ce_elite_threshold,
             Σ_est_target = DiagonalUnequalVariance(),
             Σ_est_shrinkage = :lw,
+            min_max_sample_perc = min_max_sample_perc,
+            log=pol_log,
+            rng=MersenneTwister(),
+            )
+    elseif policy_type == :nesmppi
+        pol = NESMPPI_Policy(env, 
+            num_samples=num_samples,
+            horizon=horizon,
+            λ=λ,
+            α=α,
+            U₀=U₀,
+            cov_mat=cov_mat,
+            opt_its=opt_its,
+            min_max_sample_perc=min_max_sample_perc,
+            step_factor=step_factor,
             log=pol_log,
             rng=MersenneTwister(),
             )
@@ -318,6 +338,7 @@ function get_policy(env, policy_type,
             α=α,
             U₀=U₀,
             cov_mat=cov_mat,
+            min_max_sample_perc=min_max_sample_perc,
             log=pol_log,
             rng=MersenneTwister(),
             )
@@ -330,8 +351,8 @@ end
 
 for ii = 1:1
 
-    pol_type = :gmppi
-    ns = 1500
+    pol_type = :cemppi
+    ns = 150
     oIts = 10
 
     # if ii == 1
@@ -352,27 +373,29 @@ for ii = 1:1
     #     oIts = 1
     # end
 
-    sim_type            = :cr
-    num_cars            = 1
+    sim_type            = :mcr
+    num_cars            = 5
     n_trials            = 1
     laps                = 2
 
     p_type              = pol_type
-    n_steps             = 2000
+    n_steps             = 25
     n_samp              = ns
     horizon             = 50
     λ                   = 0.5
     α                   = 1.0
     opt_its             = oIts
     ce_elite_threshold  = 0.8
+    min_max_sample_p    = 0.1 
+    step_factor         = 0.0001
     U₀                  = zeros(Float64, num_cars*2)
     cov_mat             = block_diagm([0.0625, 0.1], num_cars)
 
     plot_steps          = false
-    pol_log             = true
-    plot_traj           = true
+    pol_log             = false
+    plot_traj           = false
     traj_p              = 1.0
-    save_gif            = true
+    save_gif            = false
 
     println("Sim Type:              $sim_type")
     println("Num Cars:              $num_cars")
@@ -383,8 +406,10 @@ for ii = 1:1
     println("Horizon:               $horizon")
     println("λ:                     $λ")
     println("α:                     $α")
-    println("OptCE Iterations:      $opt_its")
+    println("# Opt Iterations:      $opt_its")
     println("CE Elite Threshold:    $ce_elite_threshold")
+    println("Min Max Sample Perc    $min_max_sample_p")
+    println("NES Step Factor        $step_factor")
     println("U₀:                    zeros(Float64, $(num_cars*2))")
     println("Σ:                     block_diagm([0.0625, 0.1], $num_cars)")
     println()
@@ -403,6 +428,8 @@ for ii = 1:1
         cov_mat = cov_mat,
         opt_its = opt_its,
         ce_elite_threshold = ce_elite_threshold,
+        min_max_sample_perc = min_max_sample_p,
+        step_factor = step_factor,
         pol_log=pol_log,
         plot_traj=plot_traj,
         plot_traj_perc = traj_p,
