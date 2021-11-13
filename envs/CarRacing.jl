@@ -98,7 +98,6 @@ function CarRacingEnv(;
     track_sample_factor = 20,
     rng = Random.GLOBAL_RNG,
 )
-
     params = CarRacingEnvParams{T}(
         m,
         I_zz,
@@ -119,7 +118,6 @@ function CarRacingEnv(;
         λ_drive,
         β_limit,
     )
-    
     return CarRacingEnv(params, T=T, dt=dt, δt=δt, track=track, track_sample_factor=track_sample_factor, rng=rng)
 end
 
@@ -133,7 +131,8 @@ end
 - `track = "./envs/CarRacingTracks/curve.csv,   # Track to load`
 - `rng = Random.GLOBAL_RNG`
 """
-function CarRacingEnv(params::CarRacingEnvParams;
+function CarRacingEnv(
+    params::CarRacingEnvParams;
     T = Float64,
     dt = 0.1,
     δt = 0.01,
@@ -200,14 +199,14 @@ end
     reward(env::CarRacingEnv)
 
     - Reward for going fast and staying within the track boundaries.
-    - Boundary violation: -10000
+    - Boundary violation: -1000000
     - Excessive β       :  -5000
     - Speed             : +2.0 * (Vx² + Vy²)^(1/2)
 """
 function RLBase.reward(env::CarRacingEnv{T}) where {T} 
     rew = 0.0
     if !within_track(env)
-        rew += -10000.0
+        rew += -1000000.0
     end
     if exceed_β(env)
         rew += -5000.0
@@ -305,12 +304,8 @@ function _step!(env::CarRacingEnv, a::Vector{Float64})
         δ += Δδ_rate * δt
         
         # Slip angles for the tires
-        # α_f = -δ
-        # α_r = 0.0 
-        # if Vx != 0
         α_f = atan((Vy + env.params.l_f*Ψ_dot) , Vx) - δ
         α_r = atan((Vy - env.params.l_r*Ψ_dot) , Vx)
-        # end
         
         # Simple drag
         fx_aero = (env.params.C_D0 + env.params.C_D1*abs(Vx)) * sign(Vx)

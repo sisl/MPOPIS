@@ -58,6 +58,26 @@ mutable struct CEMPPI_Policy{R<:AbstractRNG} <: AbstractGMPPI_Policy
     logger::MPPI_Logger
 end
 
+mutable struct CMAMPPI_Policy{R<:AbstractRNG} <: AbstractGMPPI_Policy
+    params::MPPI_Policy_Params
+    env::AbstractEnv
+    U::Vector{Float64}
+    Σ::Matrix{Float64}
+    opt_its::Int
+    σ::Float64
+    m_elite::Int
+    ws::Vector{Float64}
+    μ_eff::Float64
+    cσ::Float64
+    dσ::Float64
+    cΣ::Float64
+    c1::Float64
+    cμ::Float64
+    E::Float64
+    rng::R
+    logger::MPPI_Logger
+end
+
 mutable struct NESMPPI_Policy{R<:AbstractRNG} <: AbstractGMPPI_Policy
     params::MPPI_Policy_Params
     env::AbstractEnv
@@ -79,7 +99,7 @@ function get_MPPI_policy_params(env::AbstractEnv, type::Symbol;
     cov_mat::Union{Matrix{Float64},Vector{Float64}} = [1.0],
     weight_method::Symbol = :IT,
     elite_threshold::Float64 = 0.8,
-    min_max_sample_perc::Float64 = 0.1,
+    min_max_sample_perc::Float64 = 0.0,
     rng::AbstractRNG = Random.GLOBAL_RNG,
     log::Bool = false,
 )
@@ -171,6 +191,32 @@ function CEMPPI_Policy(env::AbstractEnv;
               Σ, opt_its, ce_elite_threshold, 
               Σ_est_method, rng, mppi_logger,
           )
+    return pol
+end
+
+function CMAMPPI_Policy(env::AbstractEnv;
+    opt_its::Int = 10,
+    σ::Float64 = 1.0,
+    elite_perc_threshold::Float64 = 0.8,
+    kwargs...
+)
+    params, U₀, Σ, rng, mppi_logger = get_MPPI_policy_params(env, :gmppi; kwargs...)
+    m = params.num_samples
+    n = params.cs
+    m_elite = round(Int, (1.0-elite_perc_threshold)*m)
+    ws = log((m+1)/2) .- log.(1:m)
+    ws[1:m_elite] ./= sum(ws[1:m_elite])
+    μ_eff = 1 / sum(ws[1:m_elite].^2)
+    cσ = (μ_eff + 2)/(n + μ_eff + 5)
+    dσ = 1 + 2max(0, sqrt((μ_eff-1)/(n+1))-1) + cσ
+    cΣ = (4 + μ_eff/n)/(n + 4 + 2μ_eff/n)
+    c1 = 2/((n+1.3)^2 + μ_eff)
+    cμ = min(1-c1, 2*(μ_eff-2+1/μ_eff)/((n+2)^2 + μ_eff))
+    ws[m_elite+1:end] .*= -(1 + c1/cμ)/sum(ws[m_elite+1:end])
+    E = n^0.5*(1-1/(4n)+1/(21*n^2))
+
+    pol = CMAMPPI_Policy(params, env, U₀, Σ, opt_its, σ, m_elite,
+        ws, μ_eff, cσ, dσ, cΣ, c1, cμ, E, rng, mppi_logger)
     return pol
 end
 
@@ -338,6 +384,7 @@ function calculate_trajectory_costs(pol::CEMPPI_Policy, env::AbstractEnv)
     Σ′ = pol.Σ
 
     trajectory_cost = zeros(Float64, K)
+    best_traj_cost = Inf
     # Optimize sample distribution and get trajectory costs
     for n ∈ 1:N
         # Get samples for which our trajectories will be defined
@@ -362,10 +409,17 @@ function calculate_trajectory_costs(pol::CEMPPI_Policy, env::AbstractEnv)
 
         # Use the samples to simulate our model to get the costs
         trajectory_cost = simulate_model(pol, env, E, Σ_inv, U_orig)
+        order = sortperm(trajectory_cost)
+
+        # Get best trajctory and noise set
+        if trajectory_cost[order[1]] < best_traj_cost
+            best_traj_cost = trajectory_cost[order[1]]
+            best_E = E
+            best_U = pol.U
+        end
 
         if n < N
-            # Reorder, select elite samples, fit new distribution
-            order = sortperm(trajectory_cost)
+            # Select elite samples, fit new distribution
             elite = E[:, order[1:m_elite]]
             
             elite_traj_cost = trajectory_cost[order[1:m_elite]]
@@ -376,6 +430,98 @@ function calculate_trajectory_costs(pol::CEMPPI_Policy, env::AbstractEnv)
             # Transposing elite based on needed format (n x p)
             Σ′ = cov(pol.Σ_estimation_method, elite') + 10e-9*I
             pol.U = pol.U + vec(mean(elite, dims=2))
+        end
+    end
+    E = best_E .+ (best_U - U_orig)
+    pol.U = U_orig
+    return trajectory_cost, E
+end
+
+function calculate_trajectory_costs(pol::CMAMPPI_Policy, env::AbstractEnv)
+    K = pol.params.num_samples
+    N = pol.opt_its
+    cs = pol.params.cs
+    σ = pol.σ
+    m_elite = pol.m_elite
+    ws = pol.ws
+    μ_eff = pol.μ_eff
+    cσ = pol.cσ
+    dσ = pol.dσ
+    cΣ = pol.cΣ
+    c1 = pol.c1
+    cμ = pol.cμ
+    E_cma = pol.E
+
+    # Initial covariance of distribution
+    U_orig = pol.U
+    Σ = pol.Σ
+
+    pσ, pΣ = zeros(pol.params.cs), zeros(pol.params.cs)
+    trajectory_cost = zeros(Float64, K)
+    # Optimize sample distribution and get trajectory costs
+    for n ∈ 1:N
+        # Get samples for which our trajectories will be defined
+        P = Distributions.MvNormal(σ^2*Σ)
+        Σ_inv = Distributions.invcov(P)
+        E = rand(pol.rng, P, K)
+
+        # Get a few "extreme" samples for our distribution
+        if n == 1 && pol.params.min_max_sample_threshold > 0
+            ΔE = get_minmax_control_Δ(pol, env)
+            num_minmax_u = size(ΔE, 2)
+            num_minmax_samples = min(num_minmax_u, pol.params.min_max_sample_threshold)
+            if num_minmax_u > pol.params.min_max_sample_threshold
+                sample_idxs = sample(2:(num_minmax_u-1), pol.params.min_max_sample_threshold-3)
+                # Add in the all max, all min, and mean controls
+                sample_idxs = vcat(sample_idxs, [1, num_minmax_u-1, num_minmax_u])
+            else 
+                sample_idxs = 1:num_minmax_u
+            end
+            E[:, 1:num_minmax_samples] = ΔE[:, sample_idxs]
+        end
+
+        # Use the samples to simulate our model to get the costs
+        trajectory_cost = simulate_model(pol, env, E, Σ_inv, U_orig)
+
+        if n < N
+            # Reorder, select elite samples, fit new distribution
+            order = sortperm(trajectory_cost)
+            elite_E = E[:, order[1:m_elite]]
+
+            elite_traj_cost = trajectory_cost[order[1:m_elite]]
+            if maximum(abs.(diff(elite_traj_cost, dims=1))) < 10e-3
+                break
+            end
+
+            # selection and mean update
+            δs = elite_E/σ 
+            δw = zeros(Float64, cs)
+            for rᵢ ∈ 1:cs
+                δw[rᵢ] = ws[1:m_elite]' * elite_E[rᵢ,:]
+            end
+            pol.U += σ*δw
+            
+            # step-size control
+            C = Σ^-0.5
+            pσ = (1-cσ)*pσ + sqrt(cσ*(2-cσ)*μ_eff)*C*δw
+            σ *= exp(cσ/dσ * (norm(pσ)/E_cma - 1))
+
+            # covariance adaptation
+            hσ = Int(norm(pσ)/sqrt(1-(1-cσ)^(2n)) < (1.4+2/(cs+1))*E_cma)
+            pΣ = (1-cΣ)*pΣ + hσ*sqrt(cΣ*(2-cΣ)*μ_eff)*δw
+
+            temp_sum = 0
+            for ii in 1:K
+                if ws[ii] ≥ 0
+                    w0 = ws[ii]
+                else
+                    w0 = n*ws[ii]/norm(C*δs[order[ii]])^2
+                end
+                temp_sum += w0*δs[order[ii]]*δs[order[ii]]'
+            end
+
+            Σ = (1-c1-cμ)*Σ + c1*(pΣ*pΣ' + (1-hσ)*cΣ*(2-cΣ)*Σ) .+ cμ*temp_sum
+            Σ = triu(Σ)+triu(Σ,1)' # enforce symmetry
         end
     end
     E = E .+ (pol.U - U_orig)
@@ -453,6 +599,12 @@ function simulate_model(pol::AbstractGMPPI_Policy, env::AbstractEnv,
         trajectory_cost[k] += control_cost  # Adding based on "cost"
     end
     return trajectory_cost
+end
+
+function rollout_model(env::AbstractEnv, T::Int, model_controls::Vector, 
+    pol::AbstractPathIntegralPolicy, k::Int)
+    model_controls_mat = reshape(model_controls, size(model_controls, 1), 1)
+    rollout_model(env, T, model_controls_mat, pol, k)
 end
 
 function rollout_model(env::AbstractEnv, T::Int, model_controls::Matrix, 

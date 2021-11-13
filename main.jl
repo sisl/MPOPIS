@@ -63,8 +63,13 @@ function simulate_environment(environment;
     ce_elite_threshold = 0.8,
     min_max_sample_perc = 0.1,
     step_factor = 0.01,
+    σ = 1.0,
+    elite_perc_threshold = 0.8,
     pol_log = false,
     seeded=nothing,
+    state_x_sigma=0.0,
+    state_y_sigma=0.0,
+    state_ψ_sigma=0.0,
     )
 
     gif_name = "$environment-$num_cars-$policy_type-$num_samples-$horizon-$λ-$α-"
@@ -111,8 +116,9 @@ function simulate_environment(environment;
             continuous=continuous, num_cars=num_cars);
         pol = get_policy(
                 env, policy_type, num_samples, horizon,
-                λ, α, U₀, cov_mat, opt_its, ce_elite_threshold,
-                min_max_sample_perc, step_factor, pol_log,
+                λ, α, U₀, cov_mat, opt_its, ce_elite_threshold, 
+                min_max_sample_perc, step_factor, 
+                σ, elite_perc_threshold,  pol_log,
         )
         if isnothing(seeded)
             seed!(env, k)
@@ -146,6 +152,13 @@ function simulate_environment(environment;
                 if save_gif frame(anim) end
                 if plot_steps display(p) end
             end
+
+            if environment == :cr
+                env.state[1] += state_x_sigma * randn(env.rng)
+                env.state[2] += state_y_sigma * randn(env.rng)
+                env.state[3] += state_ψ_sigma * randn(env.rng)
+            end
+
             next!(pm)
 
             if environment ∈ (:cr, :mcr)
@@ -292,7 +305,8 @@ end
 function get_policy(
     env, policy_type, num_samples, horizon, λ, 
     α, U₀, cov_mat, opt_its, ce_elite_threshold, 
-    min_max_sample_perc, step_factor, pol_log,
+    min_max_sample_perc, step_factor, 
+    σ, elite_perc_threshold, pol_log,
 )
     if policy_type == :gmppi
         pol = GMPPI_Policy(env, 
@@ -305,7 +319,7 @@ function get_policy(
             min_max_sample_perc=min_max_sample_perc,
             log=pol_log,
             rng=MersenneTwister(),
-            )
+        )
     elseif policy_type == :cemppi
         pol = CEMPPI_Policy(env, 
             num_samples=num_samples,
@@ -321,7 +335,22 @@ function get_policy(
             min_max_sample_perc = min_max_sample_perc,
             log=pol_log,
             rng=MersenneTwister(),
-            )
+        )
+    elseif policy_type == :cmamppi
+        pol = CMAMPPI_Policy(env, 
+            num_samples=num_samples,
+            horizon=horizon,
+            λ=λ,
+            α=α,
+            U₀=U₀,
+            cov_mat=cov_mat,
+            opt_its=opt_its,
+            σ=σ,
+            elite_perc_threshold=elite_perc_threshold,
+            min_max_sample_perc = min_max_sample_perc,
+            log=pol_log,
+            rng=MersenneTwister(),
+        )
     elseif policy_type == :nesmppi
         pol = NESMPPI_Policy(env, 
             num_samples=num_samples,
@@ -335,7 +364,7 @@ function get_policy(
             step_factor=step_factor,
             log=pol_log,
             rng=MersenneTwister(),
-            )
+        )
     elseif policy_type == :mppi
         pol = MPPI_Policy(env, 
             num_samples=num_samples,
@@ -359,25 +388,29 @@ for ii = 1:1
 
     pol_type = :cemppi
     ns = 150
-    oIts = 10
+    oIts = 5
     λ = 10.0
 
     # if ii == 1
-    #     pol_type = :cemppi
-    #     ns = 300
-    #     oIts = 5
+    #     pol_type = :mppi
+    #     ns = 1500
+    #     oIts = 1
+    #     λ = 10.0
     # elseif ii == 2
     #     pol_type = :cemppi
-    #     ns = 500
-    #     oIts = 3
+    #     ns = 150
+    #     oIts = 10
+    #     λ = 10.0
     # elseif ii == 3
     #     pol_type = :cemppi
     #     ns = 750
     #     oIts = 2
+    #     λ = 10.0
     # elseif ii == 4
     #     pol_type = :cemppi
     #     ns = 1500
     #     oIts = 1
+    #     λ = 10.0
     # end
 
     sim_type            = :cr
@@ -395,8 +428,14 @@ for ii = 1:1
     ce_elite_threshold  = 0.8
     min_max_sample_p    = 0.0 
     step_factor         = 0.0001
+    σ                   = 1.0
+    elite_perc_threshold= 0.4
     U₀                  = zeros(Float64, num_cars*2)
     cov_mat             = block_diagm([0.0625, 0.1], num_cars)
+
+    state_x_sigma       = 0.00
+    state_y_sigma       = 0.00
+    state_ψ_sigma       = 0.00
 
     seeded              = nothing
 
@@ -419,8 +458,13 @@ for ii = 1:1
     println("CE Elite Threshold:    $ce_elite_threshold")
     println("Min Max Sample Perc    $min_max_sample_p")
     println("NES Step Factor        $step_factor")
+    println("CMA Step Factor (σ)    $σ")
+    println("CMA Elite Perc Thres   $elite_perc_threshold")
     println("U₀:                    zeros(Float64, $(num_cars*2))")
     println("Σ:                     block_diagm([0.0625, 0.1], $num_cars)")
+    println("State X σ              $state_x_sigma")
+    println("State Y σ              $state_y_sigma")
+    println("State ψ σ              $state_ψ_sigma")
     println("Seeded:                $seeded")
     println()
 
@@ -440,12 +484,17 @@ for ii = 1:1
         ce_elite_threshold = ce_elite_threshold,
         min_max_sample_perc = min_max_sample_p,
         step_factor = step_factor,
+        σ = σ,
+        elite_perc_threshold = elite_perc_threshold,
         pol_log=pol_log,
         plot_traj=plot_traj,
         plot_traj_perc = traj_p,
         save_gif=save_gif, 
         plot_steps=plot_steps,
         seeded=seeded,
+        state_x_sigma=state_x_sigma,
+        state_y_sigma=state_y_sigma,
+        state_ψ_sigma=state_ψ_sigma,
     )
 
     # simulate_environment(:mc, 
