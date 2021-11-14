@@ -178,10 +178,10 @@ function simulate_environment(environment;
                 
                 if step_rew < -4000
                     ex_β = exceed_β(env)
-                    within_t = within_track(env)
+                    within_t = within_track(env).within
                     if ex_β β_viol += 1 end
                     if !within_t trk_viol += 1 end
-                    temp_rew = step_rew + ex_β*5000 + !within_t*10000
+                    temp_rew = step_rew + ex_β*5000 + !within_t*1000000
                     if temp_rew < -10500 crash_viol += 1 end
                 end
 
@@ -386,32 +386,27 @@ end
 
 for ii = 1:1
 
-    pol_type = :cemppi
-    ns = 150
-    oIts = 5
-    λ = 10.0
-
-    # if ii == 1
-    #     pol_type = :mppi
-    #     ns = 1500
-    #     oIts = 1
-    #     λ = 10.0
-    # elseif ii == 2
-    #     pol_type = :cemppi
-    #     ns = 150
-    #     oIts = 10
-    #     λ = 10.0
-    # elseif ii == 3
-    #     pol_type = :cemppi
-    #     ns = 750
-    #     oIts = 2
-    #     λ = 10.0
-    # elseif ii == 4
-    #     pol_type = :cemppi
-    #     ns = 1500
-    #     oIts = 1
-    #     λ = 10.0
-    # end
+    if ii == 1
+        pol_type = :mppi
+        ns = 1500
+        oIts = 1
+        λ = 10.0
+    elseif ii == 2
+        pol_type = :cemppi
+        ns = 150
+        oIts = 10
+        λ = 10.0
+    elseif ii == 3
+        pol_type = :cemppi
+        ns = 750
+        oIts = 2
+        λ = 10.0
+    elseif ii == 4
+        pol_type = :cemppi
+        ns = 1500
+        oIts = 1
+        λ = 10.0
+    end
 
     sim_type            = :cr
     num_cars            = 1
@@ -419,7 +414,7 @@ for ii = 1:1
     laps                = 2
 
     p_type              = pol_type
-    n_steps             = 2000
+    n_steps             = 1500
     n_samp              = ns
     horizon             = 50
     λ                   = λ

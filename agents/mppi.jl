@@ -409,17 +409,9 @@ function calculate_trajectory_costs(pol::CEMPPI_Policy, env::AbstractEnv)
 
         # Use the samples to simulate our model to get the costs
         trajectory_cost = simulate_model(pol, env, E, Σ_inv, U_orig)
-        order = sortperm(trajectory_cost)
-
-        # Get best trajctory and noise set
-        if trajectory_cost[order[1]] < best_traj_cost
-            best_traj_cost = trajectory_cost[order[1]]
-            best_E = E
-            best_U = pol.U
-        end
-
         if n < N
             # Select elite samples, fit new distribution
+            order = sortperm(trajectory_cost)
             elite = E[:, order[1:m_elite]]
             
             elite_traj_cost = trajectory_cost[order[1:m_elite]]

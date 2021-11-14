@@ -116,7 +116,7 @@ end
 function within_track(env::MultiCarRacingEnv)
     within = true   
     for en in env.envs
-        within = within && within_track(en)
+        within = within && within_track(en).within
     end
     return within
 end

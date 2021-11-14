@@ -198,19 +198,23 @@ end
 """
     reward(env::CarRacingEnv)
 
-    - Reward for going fast and staying within the track boundaries.
-    - Boundary violation: -1000000
-    - Excessive β       :  -5000
-    - Speed             : +2.0 * (Vx² + Vy²)^(1/2)
+    - Reward for going fast, penalty for boundary violation, 
+        excess β and distance from center of track
+    - Boundary violation    : -1000000
+    - Excessive β           :  -5000
+    - Distance from center  : -(x² + y²)^(1/2) 
+    - Speed                 : +2.0 * (Vx² + Vy²)^(1/2)
 """
 function RLBase.reward(env::CarRacingEnv{T}) where {T} 
     rew = 0.0
-    if !within_track(env)
+    within_tuple = within_track(env)
+    if !within_tuple.within
         rew += -1000000.0
     end
     if exceed_β(env)
         rew += -5000.0
     end
+    rew += -within_tuple.dist
     rew += 2.0*norm(env.state[4:5])
     return rew
 end
