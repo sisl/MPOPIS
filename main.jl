@@ -182,7 +182,7 @@ function simulate_environment(environment;
                 
                 if step_rew < -4000
                     ex_β = exceed_β(env)
-                    within_t = within_track(env).within
+                    within_t = environment == :cr ? within_track(env).within : within_track(env)
                     if ex_β β_viol += 1 end
                     if !within_t trk_viol += 1 end
                     temp_rew = step_rew + ex_β*5000 + !within_t*1000000
@@ -389,51 +389,61 @@ function get_policy(
     return pol
 end
 
-
 for ii = 1:1
-
     if ii == 1
-        pol_type = :cmamppi
-        ns = 60
+        pol_type = :cemppi
+        ns = 150
         oIts = 10
         λ = 10.0
+        # Σ_est_target = DiagonalUnequalVariance()
+        # Σ_est_shrinkage = :ss
     elseif ii == 2
         pol_type = :cemppi
         ns = 150
         oIts = 4
         λ = 10.0
+        Σ_est_target = DiagonalCommonVariance()
+        Σ_est_shrinkage = :oas
     elseif ii == 3
         pol_type = :cemppi
         ns = 150
         oIts = 4
         λ = 10.0
+        Σ_est_target = DiagonalCommonVariance()
+        Σ_est_shrinkage = :rblw
     elseif ii == 4
         pol_type = :cemppi
         ns = 150
-        oIts = 4
-        λ = 10.0  
+        oIts = 8
+        λ = 10.0
+        Σ_est_target = DiagonalUnequalVariance()
+        Σ_est_shrinkage = :ss
     elseif ii == 5
         pol_type = :cemppi
         ns = 150
-        oIts = 16
+        oIts = 8
         λ = 10.0
+        Σ_est_target = DiagonalCommonVariance()
+        Σ_est_shrinkage = :oas
+    elseif ii == 6
+        pol_type = :cemppi
+        ns = 150
+        oIts = 8
+        λ = 10.0
+        Σ_est_target = DiagonalCommonVariance()
+        Σ_est_shrinkage = :rblw
     end
-    # Σ_est_target = DiagonalCommonVariance()
-    # Σ_est_shrinkage = :oas
-    # Σ_est_target = DiagonalUnequalVariance()
-    # Σ_est_shrinkage = :ss
-    # Σ_est_target = DiagonalCommonVariance()
-    # Σ_est_shrinkage = :rblw
+    
     Σ_est_target = DiagonalUnequalVariance()
     Σ_est_shrinkage = :lw
 
-    sim_type            = :cr
-    num_cars            = 1
-    n_trials            = 5
-    laps                = 1
+    sim_type            = :mcr
+    num_cars            = 2
+    n_trials            = 25
+    laps                = 2
 
     p_type              = pol_type
-    n_steps             = 750
+    n_steps             = 1200
     n_samp              = ns
     horizon             = 50
     λ                   = λ

@@ -90,7 +90,7 @@ function within_track(track::Track, pos::Vector{Float64})
     t = ((p3-p1) ⋅ (p2-p1)) /  ((p2-p1) ⋅ (p2-p1))
     projected_point = p1 + t * (p2 - p1)
     dist_to_pt = norm(projected_point - pos)
-    return (within=dist_to_pt < track.lane_width′[min_idx], dist=dist_to_pt)
+    return (within=(dist_to_pt < track.lane_width′[min_idx]), dist=dist_to_pt)
 
 end
 
