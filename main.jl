@@ -70,6 +70,8 @@ function simulate_environment(environment;
     state_x_sigma=0.0,
     state_y_sigma=0.0,
     state_ψ_sigma=0.0,
+    Σ_est_target=DiagonalUnequalVariance(),
+    Σ_est_shrinkage=:lw,
     )
 
     gif_name = "$environment-$num_cars-$policy_type-$num_samples-$horizon-$λ-$α-"
@@ -120,6 +122,7 @@ function simulate_environment(environment;
                 λ, α, U₀, cov_mat, opt_its, ce_elite_threshold, 
                 min_max_sample_perc, step_factor, 
                 σ, elite_perc_threshold,  pol_log,
+                Σ_est_target, Σ_est_shrinkage,
         )
         if isnothing(seeded)
             seed!(env, k)
@@ -309,6 +312,7 @@ function get_policy(
     α, U₀, cov_mat, opt_its, ce_elite_threshold, 
     min_max_sample_perc, step_factor, 
     σ, elite_perc_threshold, pol_log,
+    Σ_est_target, Σ_est_shrinkage,
 )
     if policy_type == :gmppi
         pol = GMPPI_Policy(env, 
@@ -332,8 +336,8 @@ function get_policy(
             cov_mat=cov_mat,
             opt_its=opt_its,
             ce_elite_threshold=ce_elite_threshold,
-            Σ_est_target = DiagonalUnequalVariance(),
-            Σ_est_shrinkage = :lw,
+            Σ_est_target = Σ_est_target,
+            Σ_est_shrinkage = Σ_est_shrinkage,
             min_max_sample_perc = min_max_sample_perc,
             log=pol_log,
             rng=MersenneTwister(),
@@ -389,34 +393,47 @@ end
 for ii = 1:1
 
     if ii == 1
-        pol_type = :mppi
-        ns = 1500
-        oIts = 1
+        pol_type = :cmamppi
+        ns = 60
+        oIts = 10
         λ = 10.0
     elseif ii == 2
         pol_type = :cemppi
         ns = 150
-        oIts = 10
+        oIts = 4
         λ = 10.0
     elseif ii == 3
         pol_type = :cemppi
-        ns = 750
-        oIts = 2
+        ns = 150
+        oIts = 4
         λ = 10.0
     elseif ii == 4
         pol_type = :cemppi
-        ns = 1500
-        oIts = 1
+        ns = 150
+        oIts = 4
+        λ = 10.0  
+    elseif ii == 5
+        pol_type = :cemppi
+        ns = 150
+        oIts = 16
         λ = 10.0
     end
+    # Σ_est_target = DiagonalCommonVariance()
+    # Σ_est_shrinkage = :oas
+    # Σ_est_target = DiagonalUnequalVariance()
+    # Σ_est_shrinkage = :ss
+    # Σ_est_target = DiagonalCommonVariance()
+    # Σ_est_shrinkage = :rblw
+    Σ_est_target = DiagonalUnequalVariance()
+    Σ_est_shrinkage = :lw
 
     sim_type            = :cr
     num_cars            = 1
-    n_trials            = 1
-    laps                = 2
+    n_trials            = 5
+    laps                = 1
 
     p_type              = pol_type
-    n_steps             = 1500
+    n_steps             = 750
     n_samp              = ns
     horizon             = 50
     λ                   = λ
@@ -429,6 +446,9 @@ for ii = 1:1
     elite_perc_threshold= 0.4
     U₀                  = zeros(Float64, num_cars*2)
     cov_mat             = block_diagm([0.0625, 0.1], num_cars)
+
+    Σ_est_target        = Σ_est_target
+    Σ_est_shrinkage     = Σ_est_shrinkage
 
     state_x_sigma       = 0.00
     state_y_sigma       = 0.00
@@ -453,15 +473,17 @@ for ii = 1:1
     println("α:                     $α")
     println("# Opt Iterations:      $opt_its")
     println("CE Elite Threshold:    $ce_elite_threshold")
-    println("Min Max Sample Perc    $min_max_sample_p")
-    println("NES Step Factor        $step_factor")
-    println("CMA Step Factor (σ)    $σ")
-    println("CMA Elite Perc Thres   $elite_perc_threshold")
+    println("Min Max Sample Perc:   $min_max_sample_p")
+    println("NES Step Factor:       $step_factor")
+    println("CMA Step Factor (σ):   $σ")
+    println("CMA Elite Perc Thres:  $elite_perc_threshold")
     println("U₀:                    zeros(Float64, $(num_cars*2))")
     println("Σ:                     block_diagm([0.0625, 0.1], $num_cars)")
-    println("State X σ              $state_x_sigma")
-    println("State Y σ              $state_y_sigma")
-    println("State ψ σ              $state_ψ_sigma")
+    println("Σ_est_target:          $Σ_est_target")
+    println("Σ_est_shrinkage:       $Σ_est_shrinkage")
+    println("State X σ:             $state_x_sigma")
+    println("State Y σ:             $state_y_sigma")
+    println("State ψ σ:             $state_ψ_sigma")
     println("Seeded:                $seeded")
     println()
 
@@ -492,6 +514,8 @@ for ii = 1:1
         state_x_sigma=state_x_sigma,
         state_y_sigma=state_y_sigma,
         state_ψ_sigma=state_ψ_sigma,
+        Σ_est_target=Σ_est_target,
+        Σ_est_shrinkage=Σ_est_shrinkage,
     )
 
     # simulate_environment(:mc, 
