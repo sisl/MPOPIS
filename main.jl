@@ -84,6 +84,7 @@ function simulate_environment(environment;
 
     rews = zeros(Float64, num_trials)
     steps = zeros(Float64, num_trials)
+    rews_per_step = zeros(Float64, num_trials)
     lap_ts = [zeros(Float64, num_trials) for _ in 1:laps]
     mean_vs = zeros(Float64, num_trials)
     max_vs = zeros(Float64, num_trials)
@@ -94,7 +95,7 @@ function simulate_environment(environment;
     C_viols = zeros(Float64, num_trials)
     exec_times = zeros(Float64, num_trials)  
 
-    @printf("Trial    #: %12s : %7s", "Reward", "Steps")
+    @printf("Trial    #: %12s : %7s: %12s", "Reward", "Steps", "Reward/Step")
     if environment ∈ (:cr, :mcr)
         for ii ∈ 1:laps
             @printf(" : %6s%d", "lap ", ii)
@@ -211,7 +212,7 @@ function simulate_environment(environment;
             print("\e[1G") # move cursor to column 1
         end
 
-        @printf("Trial %4d: %12.2f : %7d", k, rew, cnt-1)
+        @printf("Trial %4d: %12.2f : %7d: %12.2f", k, rew, cnt-1, rew/(cnt-1))
         if environment ∈ (:cr, :mcr)
             for ii ∈ 1:laps
                 @printf(" : %7d", lap_time[ii])
@@ -231,6 +232,7 @@ function simulate_environment(environment;
 
         rews[k] = rew
         steps[k] = cnt-1
+        rews_per_step[k] = rews[k]/steps[k]
         exec_times[k] = seconds_ran 
         if environment ∈ (:cr, :mcr)
             for ii ∈ 1:laps
@@ -249,7 +251,7 @@ function simulate_environment(environment;
 
     @printf("-----------------------------------\n")
 
-    @printf("Trials %3s: %12.2f : %7.2f", "AVE", mean(rews), mean(steps))
+    @printf("Trials %3s: %12.2f : %7.2f: %12.2f", "AVE", mean(rews), mean(steps), mean(rews_per_step))
     if environment ∈ (:cr, :mcr)
         for ii ∈ 1:laps
             @printf(" : %7.2f", mean(lap_ts[ii]))
@@ -263,7 +265,7 @@ function simulate_environment(environment;
     end
     @printf(" : %7.2f\n", mean(exec_times))
     
-    @printf("Trials %3s: %12.2f : %7.2f", "STD", std(rews), std(steps))
+    @printf("Trials %3s: %12.2f : %7.2f: %12.2f", "STD", std(rews), std(steps), std(rews_per_step))
     if environment ∈ (:cr, :mcr)
         for ii ∈ 1:laps
             @printf(" : %7.2f", std(lap_ts[ii]))
