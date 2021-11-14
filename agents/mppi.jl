@@ -424,7 +424,6 @@ function calculate_trajectory_costs(pol::CEMPPI_Policy, env::AbstractEnv)
             pol.U = pol.U + vec(mean(elite, dims=2))
         end
     end
-    E = best_E .+ (best_U - U_orig)
     pol.U = U_orig
     return trajectory_cost, E
 end
