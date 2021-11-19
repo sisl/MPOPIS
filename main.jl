@@ -17,10 +17,6 @@ function RLBase.reward(env::MountainCarEnv{A,T}) where {A,T}
         env.state[2] >= env.params.goal_velocity
         rew += 100000
     end
-
-    # if env.state[1] <= env.params.min_pos+0.01
-    #     rew += -5000
-    # end
     
     rew += abs(env.state[2])*10
     rew += env.done ? 0.0 : -1.0
@@ -30,14 +26,11 @@ end
 
 function RLBase.reward(env::CartPoleEnv{A,T}) where {A,T} 
     rew = 0.0
-
     # rew += abs(env.state[3])
-
     # if abs(env.state[1]) > env.params.xthreshold ||
     #     abs(env.state[3]) > env.params.thetathreshold
     #     rew += -1000
     # end
-
     rew += env.done ? 0.0 : 1.0
 end
 
@@ -160,7 +153,15 @@ function simulate_environment(environment;
             if environment == :cr
                 env.state[1] += state_x_sigma * randn(env.rng)
                 env.state[2] += state_y_sigma * randn(env.rng)
-                env.state[3] += state_ψ_sigma * randn(env.rng)
+
+                δψ = state_ψ_sigma * randn(env.rng)
+                env.state[3] += δψ
+                
+                # Passive rotation matrix
+                rot_mat = [ cos(δψ) sin(δψ) ;
+                           -sin(δψ) cos(δψ) ]
+                V′ = rot_mat*[env.state[4]; env.state[5]]
+                env.state[4:5] = V′
             end
 
             next!(pm)
@@ -390,60 +391,51 @@ function get_policy(
 end
 
 for ii = 1:1
+    num_cars = 1
     if ii == 1
-        pol_type = :cemppi
-        ns = 150
-        oIts = 10
+        pol_type = :mppi
+        ns = 1500
+        oIts = 1
         λ = 10.0
-        # Σ_est_target = DiagonalUnequalVariance()
-        # Σ_est_shrinkage = :ss
     elseif ii == 2
         pol_type = :cemppi
-        ns = 150
+        ns = 375
         oIts = 4
         λ = 10.0
-        Σ_est_target = DiagonalCommonVariance()
-        Σ_est_shrinkage = :oas
     elseif ii == 3
         pol_type = :cemppi
-        ns = 150
-        oIts = 4
+        ns = 500
+        oIts = 3
         λ = 10.0
-        Σ_est_target = DiagonalCommonVariance()
-        Σ_est_shrinkage = :rblw
     elseif ii == 4
         pol_type = :cemppi
-        ns = 150
-        oIts = 8
+        ns = 375
+        oIts = 4
         λ = 10.0
-        Σ_est_target = DiagonalUnequalVariance()
-        Σ_est_shrinkage = :ss
     elseif ii == 5
         pol_type = :cemppi
-        ns = 150
-        oIts = 8
+        ns = 262
+        oIts = 4
         λ = 10.0
-        Σ_est_target = DiagonalCommonVariance()
-        Σ_est_shrinkage = :oas
     elseif ii == 6
-        pol_type = :cemppi
-        ns = 150
-        oIts = 8
+        pol_type = :cmamppi
+        ns = 375
+        oIts = 4
         λ = 10.0
-        Σ_est_target = DiagonalCommonVariance()
-        Σ_est_shrinkage = :rblw
     end
     
     Σ_est_target = DiagonalUnequalVariance()
-    Σ_est_shrinkage = :lw
+    Σ_est_shrinkage = :ss
+
+    seeded = nothing
 
     sim_type            = :mcr
-    num_cars            = 2
-    n_trials            = 25
+    num_cars            = num_cars
+    n_trials            = 9
     laps                = 2
 
     p_type              = pol_type
-    n_steps             = 1200
+    n_steps             = 2500
     n_samp              = ns
     horizon             = 50
     λ                   = λ
@@ -453,18 +445,18 @@ for ii = 1:1
     min_max_sample_p    = 0.0 
     step_factor         = 0.0001
     σ                   = 1.0
-    elite_perc_threshold= 0.4
+    elite_perc_threshold= 0.8
     U₀                  = zeros(Float64, num_cars*2)
     cov_mat             = block_diagm([0.0625, 0.1], num_cars)
 
     Σ_est_target        = Σ_est_target
     Σ_est_shrinkage     = Σ_est_shrinkage
 
-    state_x_sigma       = 0.00
-    state_y_sigma       = 0.00
-    state_ψ_sigma       = 0.00
+    state_x_sigma       = 0.0 #0.1
+    state_y_sigma       = 0.0 #0.1
+    state_ψ_sigma       = 0.0 #0.0349
 
-    seeded              = nothing
+    seeded              = seeded
 
     plot_steps          = false
     pol_log             = false
