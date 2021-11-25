@@ -113,8 +113,7 @@ function simulate_environment(environment;
         pol = get_policy(
                 env, policy_type, num_samples, horizon,
                 λ, α, U₀, cov_mat, opt_its, ce_elite_threshold, 
-                min_max_sample_perc, step_factor, 
-                σ, elite_perc_threshold,  pol_log,
+                step_factor, σ, elite_perc_threshold,  pol_log,
                 Σ_est_target, Σ_est_shrinkage,
         )
         if isnothing(seeded)
@@ -311,8 +310,7 @@ end
 function get_policy(
     env, policy_type, num_samples, horizon, λ, 
     α, U₀, cov_mat, opt_its, ce_elite_threshold, 
-    min_max_sample_perc, step_factor, 
-    σ, elite_perc_threshold, pol_log,
+    step_factor, σ, elite_perc_threshold, pol_log,
     Σ_est_target, Σ_est_shrinkage,
 )
     if policy_type == :gmppi
@@ -323,7 +321,6 @@ function get_policy(
             α=α,
             U₀=U₀,
             cov_mat=cov_mat,
-            min_max_sample_perc=min_max_sample_perc,
             log=pol_log,
             rng=MersenneTwister(),
         )
@@ -339,7 +336,6 @@ function get_policy(
             ce_elite_threshold=ce_elite_threshold,
             Σ_est_target = Σ_est_target,
             Σ_est_shrinkage = Σ_est_shrinkage,
-            min_max_sample_perc = min_max_sample_perc,
             log=pol_log,
             rng=MersenneTwister(),
         )
@@ -354,7 +350,6 @@ function get_policy(
             opt_its=opt_its,
             σ=σ,
             elite_perc_threshold=elite_perc_threshold,
-            min_max_sample_perc = min_max_sample_perc,
             log=pol_log,
             rng=MersenneTwister(),
         )
@@ -367,7 +362,6 @@ function get_policy(
             U₀=U₀,
             cov_mat=cov_mat,
             opt_its=opt_its,
-            min_max_sample_perc=min_max_sample_perc,
             step_factor=step_factor,
             log=pol_log,
             rng=MersenneTwister(),
@@ -380,7 +374,6 @@ function get_policy(
             α=α,
             U₀=U₀,
             cov_mat=cov_mat,
-            min_max_sample_perc=min_max_sample_perc,
             log=pol_log,
             rng=MersenneTwister(),
             )
@@ -393,9 +386,9 @@ end
 for ii = 1:1
     num_cars = 1
     if ii == 1
-        pol_type = :mppi
-        ns = 1500
-        oIts = 1
+        pol_type = :cemppi
+        ns = 375
+        oIts = 4
         λ = 10.0
     elseif ii == 2
         pol_type = :cemppi
@@ -429,13 +422,13 @@ for ii = 1:1
 
     seeded = nothing
 
-    sim_type            = :mcr
+    sim_type            = :cr
     num_cars            = num_cars
-    n_trials            = 9
+    n_trials            = 1
     laps                = 2
 
     p_type              = pol_type
-    n_steps             = 2500
+    n_steps             = 1500
     n_samp              = ns
     horizon             = 50
     λ                   = λ
