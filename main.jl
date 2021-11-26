@@ -366,6 +366,30 @@ function get_policy(
             log=pol_log,
             rng=MersenneTwister(),
         )
+    elseif policy_type == :aismppi
+        pol = AISMPPI_Policy(env, 
+            num_samples=num_samples,
+            horizon=horizon,
+            λ=λ,
+            α=α,
+            U₀=U₀,
+            cov_mat=cov_mat,
+            opt_its=opt_its,
+            log=pol_log,
+            rng=MersenneTwister(),
+        )
+    elseif policy_type == :amismppi
+        pol = AMISMPPI_Policy(env, 
+            num_samples=num_samples,
+            horizon=horizon,
+            λ=λ,
+            α=α,
+            U₀=U₀,
+            cov_mat=cov_mat,
+            opt_its=opt_its,
+            log=pol_log,
+            rng=MersenneTwister(),
+        )
     elseif policy_type == :mppi
         pol = MPPI_Policy(env, 
             num_samples=num_samples,
@@ -383,22 +407,22 @@ function get_policy(
     return pol
 end
 
-for ii = 1:1
+for ii = 1:3
     num_cars = 1
     if ii == 1
-        pol_type = :cemppi
+        pol_type = :aismppi
         ns = 375
         oIts = 4
         λ = 10.0
     elseif ii == 2
-        pol_type = :cemppi
+        pol_type = :amismppi
         ns = 375
         oIts = 4
         λ = 10.0
     elseif ii == 3
         pol_type = :cemppi
-        ns = 500
-        oIts = 3
+        ns = 375
+        oIts = 4
         λ = 10.0
     elseif ii == 4
         pol_type = :cemppi
@@ -428,7 +452,7 @@ for ii = 1:1
     laps                = 2
 
     p_type              = pol_type
-    n_steps             = 1500
+    n_steps             = 1100
     n_samp              = ns
     horizon             = 50
     λ                   = λ

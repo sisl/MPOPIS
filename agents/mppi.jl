@@ -91,6 +91,26 @@ mutable struct NESMPPI_Policy{R<:AbstractRNG} <: AbstractGMPPI_Policy
     logger::MPPI_Logger
 end
 
+mutable struct AISMPPI_Policy{R<:AbstractRNG} <: AbstractGMPPI_Policy
+    params::MPPI_Policy_Params
+    env::AbstractEnv
+    U::Vector{Float64}
+    Σ::Matrix{Float64}
+    opt_its::Int
+    rng::R
+    logger::MPPI_Logger
+end
+
+mutable struct AMISMPPI_Policy{R<:AbstractRNG} <: AbstractGMPPI_Policy
+    params::MPPI_Policy_Params
+    env::AbstractEnv
+    U::Vector{Float64}
+    Σ::Matrix{Float64}
+    opt_its::Int
+    rng::R
+    logger::MPPI_Logger
+end
+
 function get_MPPI_policy_params(env::AbstractEnv, type::Symbol;
     num_samples::Int = 50, 
     horizon::Int = 50, 
@@ -229,6 +249,22 @@ function NESMPPI_Policy(env::AbstractEnv;
     return pol
 end
 
+function AISMPPI_Policy(env::AbstractEnv; 
+    opt_its::Int = 10,
+    kwargs...
+)
+    params, U₀, Σ, rng, mppi_logger = get_MPPI_policy_params(env, :gmppi; kwargs...)
+    return AISMPPI_Policy(params, env, U₀, Σ, opt_its, rng, mppi_logger)
+end
+
+function AMISMPPI_Policy(env::AbstractEnv; 
+    opt_its::Int = 10,
+    kwargs...
+)
+    params, U₀, Σ, rng, mppi_logger = get_MPPI_policy_params(env, :gmppi; kwargs...)
+    return AMISMPPI_Policy(params, env, U₀, Σ, opt_its, rng, mppi_logger)
+end
+
 Random.seed!(pol::AbstractPathIntegralPolicy, seed) = Random.seed!(pol.rng, seed)
 
 function (pol::MPPI_Policy)(env::AbstractEnv)
@@ -260,10 +296,7 @@ end
 
 function (pol::AbstractGMPPI_Policy)(env::AbstractEnv)
     cs = pol.params.cs
-    trajectory_cost, E = calculate_trajectory_costs(pol, env)
-    
-    # Compute weights based on weight method
-    weights = compute_weights(pol.params.weight_method, trajectory_cost) 
+    trajectory_cost, E, weights = calculate_trajectory_costs(pol, env) 
     
     # Weight the noise based on the calcualted weights
     weighted_noise = zeros(Float64, cs)
@@ -335,8 +368,8 @@ function calculate_trajectory_costs(pol::GMPPI_Policy, env::AbstractEnv)
 
     # Use the samples to simulate our model to get the costs
     trajectory_cost = simulate_model(pol, env, E, Σ_inv, pol.U)
-
-    return trajectory_cost, E
+    weights = compute_weights(pol.params.weight_method, trajectory_cost)
+    return trajectory_cost, E, weights
 end
 
 function calculate_trajectory_costs(pol::CEMPPI_Policy, env::AbstractEnv)
@@ -349,7 +382,6 @@ function calculate_trajectory_costs(pol::CEMPPI_Policy, env::AbstractEnv)
     Σ′ = pol.Σ
 
     trajectory_cost = zeros(Float64, K)
-    best_traj_cost = Inf
     # Optimize sample distribution and get trajectory costs
     for n ∈ 1:N
         # Get samples for which our trajectories will be defined
@@ -369,11 +401,6 @@ function calculate_trajectory_costs(pol::CEMPPI_Policy, env::AbstractEnv)
                 break
             end
 
-            # pw = StatsBase.ProbabilityWeights(vec(fill(1/m_elite, 1, m_elite)))
-            # (μ_t, Σ′) = StatsBase.mean_and_cov(elite, pw, 2)
-            # Σ′ = Σ′ + + 10e-9*I
-            # pol.U = pol.U + vec(μ_t)
-
             # Transposing elite based on needed format (n x p)
             Σ′ = cov(pol.Σ_estimation_method, elite') + 10e-9*I
             pol.U = pol.U + vec(mean(elite, dims=2))
@@ -381,7 +408,8 @@ function calculate_trajectory_costs(pol::CEMPPI_Policy, env::AbstractEnv)
     end
     E = E .+ (pol.U - U_orig)
     pol.U = U_orig
-    return trajectory_cost, E
+    weights = compute_weights(pol.params.weight_method, trajectory_cost)
+    return trajectory_cost, E, weights
 end
 
 function calculate_trajectory_costs(pol::CMAMPPI_Policy, env::AbstractEnv)
@@ -390,14 +418,8 @@ function calculate_trajectory_costs(pol::CMAMPPI_Policy, env::AbstractEnv)
     cs = pol.params.cs
     σ = pol.σ
     m_elite = pol.m_elite
-    ws = pol.ws
-    μ_eff = pol.μ_eff
-    cσ = pol.cσ
-    dσ = pol.dσ
-    cΣ = pol.cΣ
-    c1 = pol.c1
-    cμ = pol.cμ
-    E_cma = pol.E
+    ws, μ_eff, cσ, dσ = pol.ws, pol.μ_eff, pol.cσ, pol.dσ
+    cΣ, c1, cμ, E_cma = pol.cΣ, pol.c1, pol.cμ, pol.E
 
     # Initial covariance of distribution
     U_orig = pol.U
@@ -458,7 +480,8 @@ function calculate_trajectory_costs(pol::CMAMPPI_Policy, env::AbstractEnv)
     end
     E = E .+ (pol.U - U_orig)
     pol.U = U_orig
-    return trajectory_cost, E
+    weights = compute_weights(pol.params.weight_method, trajectory_cost)
+    return trajectory_cost, E, weights
 end
 
 function calculate_trajectory_costs(pol::NESMPPI_Policy, env::AbstractEnv)
@@ -499,8 +522,129 @@ function calculate_trajectory_costs(pol::NESMPPI_Policy, env::AbstractEnv)
     end
     E = E .+ (pol.U - U_orig)
     pol.U = U_orig
-    return trajectory_cost, E
+    weights = compute_weights(pol.params.weight_method, trajectory_cost)
+    return trajectory_cost, E, weights
 end
+
+"""
+    calculate_trajectory_costs(policy::AMISMPPI_Policy, env::AbstractEnv)
+Modified AMIS strategy. At each iteration, the weights are calcualted based
+all the previous samples collected. The new distribution parameters are 
+then estiamted based on all the previous samples and corresponding weights
+"""
+function calculate_trajectory_costs(pol::AMISMPPI_Policy, env::AbstractEnv)
+    K = pol.params.num_samples
+    N = pol.opt_its
+
+    # Initial covariance of distribution
+    U_orig = pol.U
+    Σ′ = pol.Σ
+
+    trajectory_cost = Vector{Float64}(undef, K*N) 
+    ws = Vector{Float64}(undef, K*N)
+    E = Matrix{Float64}(undef, size(pol.Σ, 1), K*N)
+    # Optimize sample distribution and get trajectory costs
+    for n ∈ 1:N
+        st_idx = 1 + (n-1)*K
+        end_idx = n*K
+
+        # Get samples for which our trajectories will be defined
+        P = Distributions.MvNormal(Σ′)
+        E[:, st_idx:end_idx] = rand(pol.rng, P, K)
+        Σ_inv = Distributions.invcov(P)
+
+        # Use the samples to simulate our model to get the costs
+        trajectory_cost[st_idx:end_idx] = simulate_model(pol, env, E[:, st_idx:end_idx], 
+                                                            Σ_inv, U_orig)
+        # Get weights of all samples collected so far
+        ws = compute_weights(pol.params.weight_method, trajectory_cost[1:end_idx])
+        if n < N
+            pw = StatsBase.ProbabilityWeights(ws)
+            (μ′, Σ′) = StatsBase.mean_and_cov(E[:,1:end_idx], pw, 2)
+            Σ′ = Σ′ + + 10e-9*I
+            pol.U = pol.U + vec(μ′)
+        end
+    end
+    E = E .+ (pol.U - U_orig)
+    pol.U = U_orig
+    return trajectory_cost, E, ws
+end
+
+"""
+    calculate_trajectory_costs(policy::AISMPPI_Policy, env::AbstractEnv)
+Simple AIS strategy in which the new mean and covariance are adapted at each
+iteration. New samples are then taken from the new distribution.
+"""
+function calculate_trajectory_costs(pol::AISMPPI_Policy, env::AbstractEnv)
+    K = pol.params.num_samples
+    N = pol.opt_its
+
+    # Initial covariance of distribution
+    U_orig = pol.U
+    Σ′ = pol.Σ
+
+    trajectory_cost = Vector{Float64}(undef, K) 
+    ws = Vector{Float64}(undef, K)
+    # Optimize sample distribution and get trajectory costs
+    for n ∈ 1:N
+        # Get samples for which our trajectories will be defined
+        P = Distributions.MvNormal(Σ′)
+        E = rand(pol.rng, P, K)
+        Σ_inv = Distributions.invcov(P)
+
+        # Use the samples to simulate our model to get the costs
+        trajectory_cost = simulate_model(pol, env, E, Σ_inv, U_orig)
+        # Get weights of all samples collected so far
+        ws = compute_weights(pol.params.weight_method, trajectory_cost)
+        if n < N
+            pw = StatsBase.ProbabilityWeights(ws)
+            (μ′, Σ′) = StatsBase.mean_and_cov(E, pw, 2)
+            Σ′ = Σ′ + + 10e-9*I
+            pol.U = pol.U + vec(μ′)
+        end
+    end
+    E = E .+ (pol.U - U_orig)
+    pol.U = U_orig
+    return trajectory_cost, E, ws
+end
+
+# """
+#     calculate_trajectory_costs(policy::AISMPPI_Policy, env::AbstractEnv)
+# Simple AIS strategy in which the new mean and covariance are adapted at each
+# iteration. New samples are then taken from the new distribution.
+# """
+# function calculate_trajectory_costs(pol::μAISMPPI_Policy, env::AbstractEnv)
+#     K = pol.params.num_samples
+#     N = pol.opt_its
+
+#     # Initial covariance of distribution
+#     U_orig = pol.U
+#     Σ′ = pol.Σ
+
+#     trajectory_cost = Vector{Float64}(undef, K) 
+#     ws = Vector{Float64}(undef, K)
+#     # Optimize sample distribution and get trajectory costs
+#     for n ∈ 1:N
+#         # Get samples for which our trajectories will be defined
+#         P = Distributions.MvNormal(Σ′)
+#         E = rand(pol.rng, P, K)
+#         Σ_inv = Distributions.invcov(P)
+
+#         # Use the samples to simulate our model to get the costs
+#         trajectory_cost = simulate_model(pol, env, E, Σ_inv, U_orig)
+#         # Get weights of all samples collected so far
+#         ws = compute_weights(pol.params.weight_method, trajectory_cost)
+#         if n < N
+#             pw = StatsBase.ProbabilityWeights(ws)
+#             (μ′, Σ′) = StatsBase.mean_and_cov(E, pw, 2)
+#             Σ′ = Σ′ + + 10e-9*I
+#             pol.U = pol.U + vec(μ′)
+#         end
+#     end
+#     E = E .+ (pol.U - U_orig)
+#     pol.U = U_orig
+#     return trajectory_cost, E, ws
+# end
 
 function simulate_model(pol::AbstractGMPPI_Policy, env::AbstractEnv, 
     E::Matrix{Float64}, Σ_inv::Matrix{Float64}, U_orig::Vector{Float64},
