@@ -111,6 +111,17 @@ mutable struct AMISMPPI_Policy{R<:AbstractRNG} <: AbstractGMPPI_Policy
     logger::MPPI_Logger
 end
 
+mutable struct μAISMPPI_Policy{R<:AbstractRNG} <: AbstractGMPPI_Policy
+    params::MPPI_Policy_Params
+    env::AbstractEnv
+    U::Vector{Float64}
+    Σ::Matrix{Float64}
+    opt_its::Int
+    rng::R
+    logger::MPPI_Logger
+end
+
+
 function get_MPPI_policy_params(env::AbstractEnv, type::Symbol;
     num_samples::Int = 50, 
     horizon::Int = 50, 
@@ -249,6 +260,14 @@ function NESMPPI_Policy(env::AbstractEnv;
     return pol
 end
 
+function μAISMPPI_Policy(env::AbstractEnv; 
+    opt_its::Int = 10,
+    kwargs...
+)
+    params, U₀, Σ, rng, mppi_logger = get_MPPI_policy_params(env, :gmppi; kwargs...)
+    return μAISMPPI_Policy(params, env, U₀, Σ, opt_its, rng, mppi_logger)
+end
+
 function AISMPPI_Policy(env::AbstractEnv; 
     opt_its::Int = 10,
     kwargs...
@@ -261,7 +280,13 @@ function AMISMPPI_Policy(env::AbstractEnv;
     opt_its::Int = 10,
     kwargs...
 )
-    params, U₀, Σ, rng, mppi_logger = get_MPPI_policy_params(env, :gmppi; kwargs...)
+    params, U₀, Σ, rng, _ = get_MPPI_policy_params(env, :gmppi; kwargs...)
+    K = params.num_samples
+    N = opt_its
+    log_traj = [Matrix{Float64}(undef, (params.horizon, params.ss)) for _ in 1:K*N]
+    log_traj_costs = Vector{Float64}(undef, K*N)
+    log_traj_weights = Vector{Float64}(undef, K*N)
+    mppi_logger = MPPI_Logger(log_traj, log_traj_costs, log_traj_weights)
     return AMISMPPI_Policy(params, env, U₀, Σ, opt_its, rng, mppi_logger)
 end
 
@@ -555,7 +580,7 @@ function calculate_trajectory_costs(pol::AMISMPPI_Policy, env::AbstractEnv)
 
         # Use the samples to simulate our model to get the costs
         trajectory_cost[st_idx:end_idx] = simulate_model(pol, env, E[:, st_idx:end_idx], 
-                                                            Σ_inv, U_orig)
+                                                            Σ_inv, U_orig, n)
         # Get weights of all samples collected so far
         ws = compute_weights(pol.params.weight_method, trajectory_cost[1:end_idx])
         if n < N
@@ -608,46 +633,40 @@ function calculate_trajectory_costs(pol::AISMPPI_Policy, env::AbstractEnv)
     return trajectory_cost, E, ws
 end
 
-# """
-#     calculate_trajectory_costs(policy::AISMPPI_Policy, env::AbstractEnv)
-# Simple AIS strategy in which the new mean and covariance are adapted at each
-# iteration. New samples are then taken from the new distribution.
-# """
-# function calculate_trajectory_costs(pol::μAISMPPI_Policy, env::AbstractEnv)
-#     K = pol.params.num_samples
-#     N = pol.opt_its
+"""
+    calculate_trajectory_costs(policy::μAISMPPI_Policy, env::AbstractEnv)
+Simple AIS strategy in which only the new mean is adapted at each
+iteration. New samples are then taken from the new distribution.
+"""
+function calculate_trajectory_costs(pol::μAISMPPI_Policy, env::AbstractEnv)
+    K = pol.params.num_samples
+    N = pol.opt_its
 
-#     # Initial covariance of distribution
-#     U_orig = pol.U
-#     Σ′ = pol.Σ
+    U_orig = pol.U
+    P = Distributions.MvNormal(pol.Σ)
+    Σ_inv = Distributions.invcov(P)
 
-#     trajectory_cost = Vector{Float64}(undef, K) 
-#     ws = Vector{Float64}(undef, K)
-#     # Optimize sample distribution and get trajectory costs
-#     for n ∈ 1:N
-#         # Get samples for which our trajectories will be defined
-#         P = Distributions.MvNormal(Σ′)
-#         E = rand(pol.rng, P, K)
-#         Σ_inv = Distributions.invcov(P)
-
-#         # Use the samples to simulate our model to get the costs
-#         trajectory_cost = simulate_model(pol, env, E, Σ_inv, U_orig)
-#         # Get weights of all samples collected so far
-#         ws = compute_weights(pol.params.weight_method, trajectory_cost)
-#         if n < N
-#             pw = StatsBase.ProbabilityWeights(ws)
-#             (μ′, Σ′) = StatsBase.mean_and_cov(E, pw, 2)
-#             Σ′ = Σ′ + + 10e-9*I
-#             pol.U = pol.U + vec(μ′)
-#         end
-#     end
-#     E = E .+ (pol.U - U_orig)
-#     pol.U = U_orig
-#     return trajectory_cost, E, ws
-# end
+    trajectory_cost = Vector{Float64}(undef, K) 
+    ws = Vector{Float64}(undef, K)
+    # Optimize sample distribution and get trajectory costs
+    for n ∈ 1:N
+        E = rand(pol.rng, P, K)
+        trajectory_cost = simulate_model(pol, env, E, Σ_inv, U_orig)
+        ws = compute_weights(pol.params.weight_method, trajectory_cost)
+        if n < N
+            pw = StatsBase.ProbabilityWeights(ws)
+            (μ′, Σ′) = StatsBase.mean_and_cov(E, pw, 2)
+            pol.U = pol.U + vec(μ′)
+        end
+    end
+    E = E .+ (pol.U - U_orig)
+    pol.U = U_orig
+    return trajectory_cost, E, ws
+end
 
 function simulate_model(pol::AbstractGMPPI_Policy, env::AbstractEnv, 
     E::Matrix{Float64}, Σ_inv::Matrix{Float64}, U_orig::Vector{Float64},
+    n::Int=1,
 )
     K, T = pol.params.num_samples, pol.params.horizon
     as = pol.params.as
@@ -659,29 +678,30 @@ function simulate_model(pol::AbstractGMPPI_Policy, env::AbstractEnv,
         Vₖ = pol.U + E[:,k]
         control_cost = γ * U_orig'*Σ_inv*(Vₖ .- U_orig) 
         model_controls = get_model_controls(action_space(sim_env), Vₖ, T)
-        trajectory_cost[k] = rollout_model(sim_env, T, model_controls, pol, k)
+        trajectory_cost[k] = rollout_model(sim_env, T, model_controls, pol, k, n)
         trajectory_cost[k] += control_cost  # Adding based on "cost"
     end
     return trajectory_cost
 end
 
 function rollout_model(env::AbstractEnv, T::Int, model_controls::Vector, 
-    pol::AbstractPathIntegralPolicy, k::Int)
+    pol::AbstractPathIntegralPolicy, k::Int, n::Int)
     model_controls_mat = reshape(model_controls, size(model_controls, 1), 1)
-    rollout_model(env, T, model_controls_mat, pol, k)
+    rollout_model(env, T, model_controls_mat, pol, k, n)
 end
 
 function rollout_model(env::AbstractEnv, T::Int, model_controls::Matrix, 
-    pol::AbstractPathIntegralPolicy, k::Int,
+    pol::AbstractPathIntegralPolicy, k::Int, n::Int, 
 )
     as = pol.params.as
+    K = pol.params.num_samples
     traj_cost = 0.0
     for t ∈ 1:T
         controls = as == 1 ? model_controls[t] : model_controls[:,t]
         env(controls)
         traj_cost -= reward(env) # Subtracting based on "reward"
         if pol.params.log
-            pol.logger.trajectories[k][t, :] = env.state
+            pol.logger.trajectories[k+(n-1)*K][t, :] = env.state
         end
     end
     return traj_cost

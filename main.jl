@@ -390,6 +390,18 @@ function get_policy(
             log=pol_log,
             rng=MersenneTwister(),
         )
+    elseif policy_type == :μaismppi
+        pol = μAISMPPI_Policy(env, 
+            num_samples=num_samples,
+            horizon=horizon,
+            λ=λ,
+            α=α,
+            U₀=U₀,
+            cov_mat=cov_mat,
+            opt_its=opt_its,
+            log=pol_log,
+            rng=MersenneTwister(),
+        )
     elseif policy_type == :mppi
         pol = MPPI_Policy(env, 
             num_samples=num_samples,
@@ -407,7 +419,7 @@ function get_policy(
     return pol
 end
 
-for ii = 1:3
+for ii = 3:4
     num_cars = 1
     if ii == 1
         pol_type = :aismppi
@@ -416,16 +428,16 @@ for ii = 1:3
         λ = 10.0
     elseif ii == 2
         pol_type = :amismppi
-        ns = 375
-        oIts = 4
+        ns = 150
+        oIts = 10
         λ = 10.0
     elseif ii == 3
-        pol_type = :cemppi
-        ns = 375
-        oIts = 4
+        pol_type = :μaismppi
+        ns = 150
+        oIts = 10
         λ = 10.0
     elseif ii == 4
-        pol_type = :cemppi
+        pol_type = :μaismppi
         ns = 375
         oIts = 4
         λ = 10.0
@@ -448,7 +460,7 @@ for ii = 1:3
 
     sim_type            = :cr
     num_cars            = num_cars
-    n_trials            = 1
+    n_trials            = 25
     laps                = 2
 
     p_type              = pol_type
@@ -469,9 +481,9 @@ for ii = 1:3
     Σ_est_target        = Σ_est_target
     Σ_est_shrinkage     = Σ_est_shrinkage
 
-    state_x_sigma       = 0.0 #0.1
-    state_y_sigma       = 0.0 #0.1
-    state_ψ_sigma       = 0.0 #0.0349
+    state_x_sigma       = 0.0
+    state_y_sigma       = 0.0
+    state_ψ_sigma       = 0.0
 
     seeded              = seeded
 
