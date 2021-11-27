@@ -121,6 +121,16 @@ mutable struct μAISMPPI_Policy{R<:AbstractRNG} <: AbstractGMPPI_Policy
     logger::MPPI_Logger
 end
 
+mutable struct PMCMPPI_Policy{R<:AbstractRNG} <: AbstractGMPPI_Policy
+    params::MPPI_Policy_Params
+    env::AbstractEnv
+    U::Vector{Float64}
+    Σ::Matrix{Float64}
+    opt_its::Int
+    rng::R
+    logger::MPPI_Logger
+end
+
 
 function get_MPPI_policy_params(env::AbstractEnv, type::Symbol;
     num_samples::Int = 50, 
@@ -288,6 +298,14 @@ function AMISMPPI_Policy(env::AbstractEnv;
     log_traj_weights = Vector{Float64}(undef, K*N)
     mppi_logger = MPPI_Logger(log_traj, log_traj_costs, log_traj_weights)
     return AMISMPPI_Policy(params, env, U₀, Σ, opt_its, rng, mppi_logger)
+end
+
+function PMCMPPI_Policy(env::AbstractEnv; 
+    opt_its::Int = 10,
+    kwargs...
+)
+    params, U₀, Σ, rng, mppi_logger = get_MPPI_policy_params(env, :gmppi; kwargs...)
+    return PMCMPPI_Policy(params, env, U₀, Σ, opt_its, rng, mppi_logger)
 end
 
 Random.seed!(pol::AbstractPathIntegralPolicy, seed) = Random.seed!(pol.rng, seed)
@@ -656,6 +674,48 @@ function calculate_trajectory_costs(pol::μAISMPPI_Policy, env::AbstractEnv)
         if n < N
             pw = StatsBase.ProbabilityWeights(ws)
             (μ′, Σ′) = StatsBase.mean_and_cov(E, pw, 2)
+            pol.U = pol.U + vec(μ′)
+        end
+    end
+    E = E .+ (pol.U - U_orig)
+    pol.U = U_orig
+    return trajectory_cost, E, ws
+end
+
+"""
+    calculate_trajectory_costs(policy::PMCMPPI_Policy, env::AbstractEnv)
+Generic PMC strategy. 
+O Cappé, A Guillin, J. M Marin & C. P Robert (2004) 
+Population Monte Carlo, Journal of Computational and Graphical Statistics, 
+13:4, 907-929, DOI: 10.1198/106186004X12803
+"""
+function calculate_trajectory_costs(pol::PMCMPPI_Policy, env::AbstractEnv)
+    K = pol.params.num_samples
+    N = pol.opt_its
+
+    # Initial covariance of distribution
+    U_orig = pol.U
+    Σ′ = pol.Σ
+
+    trajectory_cost = Vector{Float64}(undef, K) 
+    ws = Vector{Float64}(undef, K)
+    # Optimize sample distribution and get trajectory costs
+    for n ∈ 1:N
+        # Get samples for which our trajectories will be defined
+        P = Distributions.MvNormal(Σ′)
+        E = rand(pol.rng, P, K)
+        Σ_inv = Distributions.invcov(P)
+
+        # Use the samples to simulate our model to get the costs
+        trajectory_cost = simulate_model(pol, env, E, Σ_inv, U_orig)
+        # Get weights of all samples collected so far
+        ws = compute_weights(pol.params.weight_method, trajectory_cost)
+        if n < N
+            resample_cat_dist = Categorical(ws)
+            resample_idxs = rand(pol.rng, resample_cat_dist, K)
+            E′ = E[:, resample_idxs]
+            (μ′, Σ′) = StatsBase.mean_and_cov(E′, 2)
+            Σ′ = Σ′ + + 10e-9*I
             pol.U = pol.U + vec(μ′)
         end
     end

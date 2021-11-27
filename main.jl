@@ -402,6 +402,18 @@ function get_policy(
             log=pol_log,
             rng=MersenneTwister(),
         )
+    elseif policy_type == :pmcmppi
+        pol = PMCMPPI_Policy(env, 
+            num_samples=num_samples,
+            horizon=horizon,
+            λ=λ,
+            α=α,
+            U₀=U₀,
+            cov_mat=cov_mat,
+            opt_its=opt_its,
+            log=pol_log,
+            rng=MersenneTwister(),
+        )
     elseif policy_type == :mppi
         pol = MPPI_Policy(env, 
             num_samples=num_samples,
@@ -419,10 +431,10 @@ function get_policy(
     return pol
 end
 
-for ii = 3:4
+for ii = 1:1
     num_cars = 1
     if ii == 1
-        pol_type = :aismppi
+        pol_type = :pmcmppi
         ns = 375
         oIts = 4
         λ = 10.0
