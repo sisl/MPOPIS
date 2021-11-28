@@ -452,13 +452,13 @@ function calculate_trajectory_costs(pol::CEMPPI_Policy, env::AbstractEnv)
                 break
             end
 
-            # (μ′, Σ′) = StatsBase.mean_and_cov(elite, 2)
-            # Σ′ = Σ′ + + 10e-9*I
-            # pol.U = pol.U + vec(μ′)
+            (μ′, Σ′) = StatsBase.mean_and_cov(elite, 2)
+            Σ′ = Σ′ + + 10e-9*I
+            pol.U = pol.U + vec(μ′)
 
-            # Transposing elite based on needed format (n x p)
-            Σ′ = cov(pol.Σ_estimation_method, elite') + 10e-9*I
-            pol.U = pol.U + vec(mean(elite, dims=2))
+            # # Transposing elite based on needed format (n x p)
+            # Σ′ = cov(pol.Σ_estimation_method, elite') + 10e-9*I
+            # pol.U = pol.U + vec(mean(elite, dims=2))
         end
     end
     E = E .+ (pol.U - U_orig)

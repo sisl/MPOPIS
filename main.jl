@@ -121,8 +121,8 @@ function simulate_environment(environment;
             seed!(env, k)
             seed!(pol, k)
         else
-            seed!(env, seeded)
-            seed!(pol, seeded)
+            seed!(env, seeded + k - 1)
+            seed!(pol, seeded + k - 1)
         end
         
         pm = Progress(num_steps, 1, "Trial $k ....", 50)
@@ -436,40 +436,40 @@ function get_policy(
     return pol
 end
 
-for ii = 2:6
+for ii = 6:6
     num_cars = 2
     if ii == 1
-        pol_type = :aismppi
+        pol_type = :amismppi
         ns = 375
         oIts = 1
         λ = 10.0
         λ_ais = 20.0
     elseif ii == 2
-        pol_type = :aismppi
+        pol_type = :amismppi
         ns = 375
         oIts = 2
         λ = 10.0
         λ_ais = 20.0
     elseif ii == 3
-        pol_type = :aismppi
+        pol_type = :amismppi
         ns = 375
         oIts = 3
         λ = 10.0
         λ_ais = 20.0
     elseif ii == 4
-        pol_type = :aismppi
+        pol_type = :amismppi
         ns = 375
         oIts = 4
         λ = 10.0
         λ_ais = 20.0
     elseif ii == 5
-        pol_type = :aismppi
+        pol_type = :amismppi
         ns = 375
         oIts = 5
         λ = 10.0
         λ_ais = 20.0
     elseif ii == 6
-        pol_type = :aismppi
+        pol_type = :amismppi
         ns = 375
         oIts = 6
         λ = 10.0
@@ -497,7 +497,7 @@ for ii = 2:6
     ce_elite_threshold  = 0.8
     min_max_sample_p    = 0.0 
     step_factor         = 0.0001
-    σ                   = 1.0
+    σ                   = 0.5
     elite_perc_threshold= 0.8
     U₀                  = zeros(Float64, num_cars*2)
     cov_mat             = block_diagm([0.0625, 0.1], num_cars)
