@@ -53,6 +53,7 @@ function simulate_environment(environment;
     U₀ = [0.0],
     cov_mat = [1.5],
     opt_its = 10,
+    λ_ais = 20.0,
     ce_elite_threshold = 0.8,
     min_max_sample_perc = 0.1,
     step_factor = 0.01,
@@ -114,7 +115,7 @@ function simulate_environment(environment;
                 env, policy_type, num_samples, horizon,
                 λ, α, U₀, cov_mat, opt_its, ce_elite_threshold, 
                 step_factor, σ, elite_perc_threshold,  pol_log,
-                Σ_est_target, Σ_est_shrinkage,
+                Σ_est_target, Σ_est_shrinkage, λ_ais,
         )
         if isnothing(seeded)
             seed!(env, k)
@@ -311,7 +312,7 @@ function get_policy(
     env, policy_type, num_samples, horizon, λ, 
     α, U₀, cov_mat, opt_its, ce_elite_threshold, 
     step_factor, σ, elite_perc_threshold, pol_log,
-    Σ_est_target, Σ_est_shrinkage,
+    Σ_est_target, Σ_est_shrinkage, λ_ais,
 )
     if policy_type == :gmppi
         pol = GMPPI_Policy(env, 
@@ -375,6 +376,7 @@ function get_policy(
             U₀=U₀,
             cov_mat=cov_mat,
             opt_its=opt_its,
+            λ_ais=λ_ais,
             log=pol_log,
             rng=MersenneTwister(),
         )
@@ -387,6 +389,7 @@ function get_policy(
             U₀=U₀,
             cov_mat=cov_mat,
             opt_its=opt_its,
+            λ_ais=λ_ais,
             log=pol_log,
             rng=MersenneTwister(),
         )
@@ -399,6 +402,7 @@ function get_policy(
             U₀=U₀,
             cov_mat=cov_mat,
             opt_its=opt_its,
+            λ_ais=λ_ais,
             log=pol_log,
             rng=MersenneTwister(),
         )
@@ -411,6 +415,7 @@ function get_policy(
             U₀=U₀,
             cov_mat=cov_mat,
             opt_its=opt_its,
+            λ_ais=λ_ais,
             log=pol_log,
             rng=MersenneTwister(),
         )
@@ -431,38 +436,44 @@ function get_policy(
     return pol
 end
 
-for ii = 1:1
-    num_cars = 1
+for ii = 2:6
+    num_cars = 2
     if ii == 1
-        pol_type = :pmcmppi
+        pol_type = :aismppi
         ns = 375
-        oIts = 4
+        oIts = 1
         λ = 10.0
+        λ_ais = 20.0
     elseif ii == 2
-        pol_type = :amismppi
-        ns = 150
-        oIts = 10
+        pol_type = :aismppi
+        ns = 375
+        oIts = 2
         λ = 10.0
+        λ_ais = 20.0
     elseif ii == 3
-        pol_type = :μaismppi
-        ns = 150
-        oIts = 10
+        pol_type = :aismppi
+        ns = 375
+        oIts = 3
         λ = 10.0
+        λ_ais = 20.0
     elseif ii == 4
-        pol_type = :μaismppi
+        pol_type = :aismppi
         ns = 375
         oIts = 4
         λ = 10.0
+        λ_ais = 20.0
     elseif ii == 5
-        pol_type = :cemppi
-        ns = 262
-        oIts = 4
-        λ = 10.0
-    elseif ii == 6
-        pol_type = :cmamppi
+        pol_type = :aismppi
         ns = 375
-        oIts = 4
+        oIts = 5
         λ = 10.0
+        λ_ais = 20.0
+    elseif ii == 6
+        pol_type = :aismppi
+        ns = 375
+        oIts = 6
+        λ = 10.0
+        λ_ais = 20.0
     end
     
     Σ_est_target = DiagonalUnequalVariance()
@@ -470,18 +481,19 @@ for ii = 1:1
 
     seeded = nothing
 
-    sim_type            = :cr
+    sim_type            = :mcr
     num_cars            = num_cars
     n_trials            = 25
     laps                = 2
 
     p_type              = pol_type
-    n_steps             = 1100
+    n_steps             = 2500
     n_samp              = ns
     horizon             = 50
     λ                   = λ
     α                   = 1.0
     opt_its             = oIts
+    λ_ais               = λ_ais
     ce_elite_threshold  = 0.8
     min_max_sample_p    = 0.0 
     step_factor         = 0.0001
@@ -515,6 +527,7 @@ for ii = 1:1
     println("λ:                     $λ")
     println("α:                     $α")
     println("# Opt Iterations:      $opt_its")
+    println("λ_ais:                 $λ_ais")
     println("CE Elite Threshold:    $ce_elite_threshold")
     println("Min Max Sample Perc:   $min_max_sample_p")
     println("NES Step Factor:       $step_factor")
@@ -543,6 +556,7 @@ for ii = 1:1
         U₀ = U₀,
         cov_mat = cov_mat,
         opt_its = opt_its,
+        λ_ais=λ_ais,
         ce_elite_threshold = ce_elite_threshold,
         min_max_sample_perc = min_max_sample_p,
         step_factor = step_factor,
