@@ -485,7 +485,11 @@ function calculate_trajectory_costs(pol::CMAMPPI_Policy, env::AbstractEnv)
     # Optimize sample distribution and get trajectory costs
     for n ∈ 1:N
         # Get samples for which our trajectories will be defined
-        P = Distributions.MvNormal(σ^2*Σ)
+        if N > 1
+            P = Distributions.MvNormal(σ^2*Σ)
+        else
+            P = Distributions.MvNormal(Σ)
+        end
         Σ_inv = Distributions.invcov(P)
         E = rand(pol.rng, P, K)
 
