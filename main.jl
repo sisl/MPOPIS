@@ -18,7 +18,7 @@ function RLBase.reward(env::MountainCarEnv{A,T}) where {A,T}
         rew += 100000
     end
     
-    rew += abs(env.state[2])*10
+    rew += abs(env.state[2])
     rew += env.done ? 0.0 : -1.0
 
     return rew
@@ -66,7 +66,7 @@ function simulate_environment(environment;
     state_ψ_sigma=0.0,
     Σ_est_target=DiagonalUnequalVariance(),
     Σ_est_shrinkage=:lw,
-    )
+)
 
     gif_name = "$environment-$num_cars-$policy_type-$num_samples-$horizon-$λ-$α-"
     cov_v = cov_mat[1,1]
@@ -283,6 +283,79 @@ function simulate_environment(environment;
     end
     @printf(" : %7.2f\n", std(exec_times))
 
+    @printf("Trials %3s: %12.2f : %7.2f: %12.2f", "MED", 
+        quantile_ci(rews)[2], quantile_ci(steps)[2], quantile_ci(rews_per_step)[2])
+    if environment ∈ (:cr, :mcr)
+        for ii ∈ 1:laps
+            @printf(" : %7.2f", quantile_ci(lap_ts[ii])[2])
+        end
+        @printf(" : %7.2f : %7.2f", quantile_ci(mean_vs)[2], quantile_ci(max_vs)[2])
+        @printf(" : %7.2f : %7.2f",  quantile_ci(mean_βs)[2], quantile_ci(max_βs)[2])
+        @printf(" : %7.2f : %7.2f", quantile_ci(β_viols)[2], quantile_ci(T_viols)[2])
+        if environment == :mcr
+            @printf(" : %7.2f", quantile_ci(C_viols)[2])
+        end
+    end
+    @printf(" : %7.2f\n", quantile_ci(exec_times)[2])
+
+    @printf("Trials %3s: %12.2f : %7.2f: %12.2f", "L95", 
+        quantile_ci(rews)[1], quantile_ci(steps)[1], quantile_ci(rews_per_step)[1])
+    if environment ∈ (:cr, :mcr)
+        for ii ∈ 1:laps
+            @printf(" : %7.2f", quantile_ci(lap_ts[ii])[1])
+        end
+        @printf(" : %7.2f : %7.2f", quantile_ci(mean_vs)[1], quantile_ci(max_vs)[1])
+        @printf(" : %7.2f : %7.2f",  quantile_ci(mean_βs)[1], quantile_ci(max_βs)[1])
+        @printf(" : %7.2f : %7.2f", quantile_ci(β_viols)[1], quantile_ci(T_viols)[1])
+        if environment == :mcr
+            @printf(" : %7.2f", quantile_ci(C_viols)[1])
+        end
+    end
+    @printf(" : %7.2f\n", quantile_ci(exec_times)[1])
+
+    @printf("Trials %3s: %12.2f : %7.2f: %12.2f", "U95", 
+        quantile_ci(rews)[3], quantile_ci(steps)[3], quantile_ci(rews_per_step)[3])
+    if environment ∈ (:cr, :mcr)
+        for ii ∈ 1:laps
+            @printf(" : %7.2f", quantile_ci(lap_ts[ii])[3])
+        end
+        @printf(" : %7.2f : %7.2f", quantile_ci(mean_vs)[3], quantile_ci(max_vs)[3])
+        @printf(" : %7.2f : %7.2f",  quantile_ci(mean_βs)[3], quantile_ci(max_βs)[3])
+        @printf(" : %7.2f : %7.2f", quantile_ci(β_viols)[3], quantile_ci(T_viols)[3])
+        if environment == :mcr
+            @printf(" : %7.2f", quantile_ci(C_viols)[3])
+        end
+    end
+    @printf(" : %7.2f\n", quantile_ci(exec_times)[3])
+
+    @printf("Trials %3s: %12.2f : %7.2f: %12.2f", "MIN", 
+        minimum(rews), minimum(steps), minimum(rews_per_step))
+    if environment ∈ (:cr, :mcr)
+        for ii ∈ 1:laps
+            @printf(" : %7.2f", minimum(lap_ts[ii]))
+        end
+        @printf(" : %7.2f : %7.2f", minimum(mean_vs), minimum(max_vs))
+        @printf(" : %7.2f : %7.2f",  minimum(mean_βs), minimum(max_βs))
+        @printf(" : %7.2f : %7.2f", minimum(β_viols), minimum(T_viols))
+        if environment == :mcr
+            @printf(" : %7.2f", minimum(C_viols))
+        end
+    end
+    @printf(" : %7.2f\n", minimum(exec_times))
+
+    @printf("Trials %3s: %12.2f : %7.2f: %12.2f", "MAX", maximum(rews), maximum(steps), maximum(rews_per_step))
+    if environment ∈ (:cr, :mcr)
+        for ii ∈ 1:laps
+            @printf(" : %7.2f", maximum(lap_ts[ii]))
+        end
+        @printf(" : %7.2f : %7.2f", maximum(mean_vs), maximum(max_vs))
+        @printf(" : %7.2f : %7.2f",  maximum(mean_βs), maximum(max_βs))
+        @printf(" : %7.2f : %7.2f", maximum(β_viols), maximum(T_viols))
+        if environment == :mcr
+            @printf(" : %7.2f", maximum(C_viols))
+        end
+    end
+    @printf(" : %7.2f\n", maximum(exec_times))
 
     if save_gif
         println("Saving gif...$gif_name")
@@ -436,6 +509,16 @@ function get_policy(
     return pol
 end
 
+function quantile_ci(x, p=0.05, q=0.5)
+    n = length(x)
+    zm = quantile(Normal(0.0, 1.0), p/2)
+    zp = quantile(Normal(0.0, 1.0), 1-p/2)
+    j = Int(ceil(n*q + zm*sqrt(n*q*(1-q))))
+    k = Int(ceil(n*q + zp*sqrt(n*q*(1-q))))
+    x_sorted = sort(x)
+    return x_sorted[j], quantile(x, q), x_sorted[k]
+end
+
 for ii = 6:6
     num_cars = 2
     if ii == 1
@@ -574,30 +657,107 @@ for ii = 6:6
         Σ_est_target=Σ_est_target,
         Σ_est_shrinkage=Σ_est_shrinkage,
     )
-
-    # simulate_environment(:mc, 
-    #     num_steps=200, 
-    #     num_trials=1, 
-    #     policy_type=:cemppi, 
-    #     num_samples=100, 
-    #     horizon=15, 
-    #     continuous=true, 
-    #     U₀=[0.0], 
-    #     pol_log=true,
-    #     save_gif=false, 
-    #     plot_steps=false
-    # )
-    # simulate_environment(:cp, 
-    #     num_steps=200, 
-    #     num_trials=1, 
-    #     policy_type=:cemppi, 
-    #     num_samples=100, 
-    #     horizon=15, 
-    #     continuous=true, 
-    #     U₀=[0.0], 
-    #     pol_log=true,
-    #     save_gif=false, 
-    #     plot_steps=false
-    # )
-
 end
+
+# for ii = 2:2
+#     oIts = 8
+#     λ = 0.1
+#     λ_ais = 0.1
+#     if ii == 1
+#         pol_type = :mppi
+#         ns = 20*oIts
+#         oIts = 1    
+#     elseif ii == 2
+#         pol_type = :cemppi
+#         ns = 20
+#     elseif ii == 3
+#         pol_type = :pmcmppi
+#         ns = 20
+#     elseif ii == 4
+#         pol_type = :amismppi
+#         ns = 20
+#     elseif ii == 5
+#         pol_type = :μaismppi
+#         ns = 20
+#     elseif ii == 6
+#         pol_type = :cmamppi
+#         ns = 20
+#     end
+    
+#     Σ_est_target = DiagonalUnequalVariance()
+#     Σ_est_shrinkage = :ss
+
+#     seeded = nothing
+
+#     sim_type            = :mc
+#     n_trials            = 25
+
+#     p_type              = pol_type
+#     n_steps             = 200
+#     n_samp              = ns
+#     horizon             = 15
+#     λ                   = λ
+#     α                   = 1.0
+#     opt_its             = oIts
+#     λ_ais               = λ_ais
+#     ce_elite_threshold  = 0.8 
+#     σ                   = 0.5
+#     elite_perc_threshold= 0.8
+#     U₀                  = [0.0]
+#     cov_mat             = [1.5]
+
+#     Σ_est_target        = Σ_est_target
+#     Σ_est_shrinkage     = Σ_est_shrinkage
+
+#     seeded              = seeded
+
+#     plot_steps          = false
+#     pol_log             = false
+#     plot_traj           = false
+#     traj_p              = 1.0
+#     save_gif            = false
+
+#     println("Sim Type:              $sim_type")
+#     println("Trials:                $n_trials")
+#     println("Policy Type:           $p_type")
+#     println("# Samples:             $n_samp")
+#     println("Horizon:               $horizon")
+#     println("λ:                     $λ")
+#     println("α:                     $α")
+#     println("# Opt Iterations:      $opt_its")
+#     println("λ_ais:                 $λ_ais")
+#     println("CE Elite Threshold:    $ce_elite_threshold")
+#     println("CMA Step Factor (σ):   $σ")
+#     println("CMA Elite Perc Thres:  $elite_perc_threshold")
+#     println("U₀:                    [0.0]")
+#     println("Σ:                     [1.5]")
+#     println("Σ_est_target:          $Σ_est_target")
+#     println("Σ_est_shrinkage:       $Σ_est_shrinkage")
+#     println("Seeded:                $seeded")
+#     println()
+
+#     simulate_environment(sim_type, 
+#         num_steps = n_steps, 
+#         num_trials = n_trials, 
+#         policy_type=p_type, 
+#         num_samples=n_samp, 
+#         horizon=horizon,  
+#         λ = λ,
+#         α = α,
+#         U₀ = U₀,
+#         cov_mat = cov_mat,
+#         opt_its = opt_its,
+#         λ_ais=λ_ais,
+#         ce_elite_threshold = ce_elite_threshold,
+#         σ = σ,
+#         elite_perc_threshold = elite_perc_threshold,
+#         pol_log=pol_log,
+#         plot_traj=plot_traj,
+#         plot_traj_perc = traj_p,
+#         save_gif=save_gif, 
+#         plot_steps=plot_steps,
+#         seeded=seeded,
+#         Σ_est_target=Σ_est_target,
+#         Σ_est_shrinkage=Σ_est_shrinkage,
+#     )
+# end
