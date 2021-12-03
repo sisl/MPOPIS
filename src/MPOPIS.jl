@@ -5,9 +5,11 @@ using CSV
 using LinearAlgebra
 using IntervalSets
 using Distributions
-using CovarianceEstimation
 using StatsBase
 using Random
+using CovarianceEstimation
+import CovarianceEstimation.LinearShrinkageTarget
+import CovarianceEstimation.SimpleCovariance
 using ReinforcementLearning
 import ReinforcementLearning.AbstractEnv
 using Plots
