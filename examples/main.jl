@@ -2,9 +2,13 @@
 using Printf
 using ProgressMeter
 using Dates
+
+using Random
+using Plots
+import CovarianceEstimation.DiagonalUnequalVariance
+
 using MPOPIS
 
-import CovarianceEstimation.DiagonalUnequalVariance
 
 function simulate_environment(environment;
     num_trials = 1,
