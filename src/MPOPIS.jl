@@ -29,7 +29,8 @@ export
     MultiCarRacingEnv,
     DroneEnv,
     within_track,
-    exceed_β
+    exceed_β,
+    block_diagm
 
 abstract type AbstractWeightMethod end
 abstract type AbstractPathIntegralPolicy end

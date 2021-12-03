@@ -4,6 +4,7 @@ using ProgressMeter
 using Dates
 using MPOPIS
 
+import CovarianceEstimation.DiagonalUnequalVariance
 
 function simulate_environment(environment;
     num_trials = 1,
