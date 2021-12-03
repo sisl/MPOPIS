@@ -1,6 +1,5 @@
 *.vscode
 *.gif
 results/
-RL/
-MPOPIS/Manifest.toml
 results_v2/
+MPOPIS/Manifest.toml

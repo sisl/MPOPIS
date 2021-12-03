@@ -1,11 +1,4 @@
 
-using Plots
-import Plots.plot
-
-include("../agents/mppi.jl")
-include("./CarRacingTracks/CarRacingTracks.jl")
-include("CarRacing.jl")
-
 function plot(track::Track)
 
     lx = track.boundary_left[:,1]
@@ -165,7 +158,6 @@ function plot(env::DroneEnv; drone_only=false)
     arrow0!(ar[1], ar[2] , u, v, as=0.35, lc=:black)
     return plt
 end
-
 
 # as: arrow head size 0-1 (fraction of arrow length)
 # la: arrow alpha transparency 0-1

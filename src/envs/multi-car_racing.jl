@@ -1,4 +1,3 @@
-include("./CarRacing.jl")
 
 mutable struct MultiCarRacingEnv{A,T,R<:AbstractRNG} <: AbstractEnv
     N::Int

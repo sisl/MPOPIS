@@ -1,6 +1,3 @@
-using CSV
-using LinearAlgebra
-
 
 struct Track
     x::Vector{Float64}
@@ -93,12 +90,3 @@ function within_track(track::Track, pos::Vector{Float64})
     return (within=(dist_to_pt < track.lane_width′[min_idx]), dist=dist_to_pt)
 
 end
-
-# function loop_test(cnt)
-#     track = Track("./envs/CarRacingTracks/curve.csv")
-#     x = rand(cnt) * 200 .- 100
-#     y = rand(cnt) * 200 .- 100
-#     for ii in 1:cnt
-#         within_track(track, [x[ii], y[ii]])
-#     end
-# end

@@ -1,38 +1,8 @@
-using Profile
+
 using Printf
 using ProgressMeter
 using Dates
-
-include("./envs/CarRacing.jl")
-include("./envs/MultiCarRacing.jl")
-include("./envs/DroneEnv.jl")
-include("./agents/mppi.jl")
-include("./envs/plots.jl")
-
-
-function RLBase.reward(env::MountainCarEnv{A,T}) where {A,T} 
-    rew = 0.0
-    
-    if env.state[1] >= env.params.goal_pos && 
-        env.state[2] >= env.params.goal_velocity
-        rew += 100000
-    end
-    
-    rew += abs(env.state[2])
-    rew += env.done ? 0.0 : -1.0
-
-    return rew
-end
-
-function RLBase.reward(env::CartPoleEnv{A,T}) where {A,T} 
-    rew = 0.0
-    # rew += abs(env.state[3])
-    # if abs(env.state[1]) > env.params.xthreshold ||
-    #     abs(env.state[3]) > env.params.thetathreshold
-    #     rew += -1000
-    # end
-    rew += env.done ? 0.0 : 1.0
-end
+using MPOPIS
 
 
 function simulate_environment(environment;
@@ -441,7 +411,7 @@ function get_policy(
             rng=MersenneTwister(),
         )
     elseif policy_type == :aismppi
-        pol = AISMPPI_Policy(env, 
+        pol = μΣAISMPPI_Policy(env, 
             num_samples=num_samples,
             horizon=horizon,
             λ=λ,
@@ -519,58 +489,28 @@ function quantile_ci(x, p=0.05, q=0.5)
     return x_sorted[j], quantile(x, q), x_sorted[k]
 end
 
-for ii = 6:6
-    num_cars = 2
-    if ii == 1
-        pol_type = :amismppi
-        ns = 375
-        oIts = 1
-        λ = 10.0
-        λ_ais = 20.0
-    elseif ii == 2
-        pol_type = :amismppi
-        ns = 375
-        oIts = 2
-        λ = 10.0
-        λ_ais = 20.0
-    elseif ii == 3
-        pol_type = :amismppi
-        ns = 375
-        oIts = 3
-        λ = 10.0
-        λ_ais = 20.0
-    elseif ii == 4
-        pol_type = :amismppi
-        ns = 375
-        oIts = 4
-        λ = 10.0
-        λ_ais = 20.0
-    elseif ii == 5
-        pol_type = :amismppi
-        ns = 375
-        oIts = 5
-        λ = 10.0
-        λ_ais = 20.0
-    elseif ii == 6
-        pol_type = :amismppi
-        ns = 375
-        oIts = 6
-        λ = 10.0
-        λ_ais = 20.0
-    end
+for ii = 1:1
+    pol_type = :mppi
+    
+    num_cars = 1
+    ii == 1
+    ns = 375
+    oIts = 1
+    λ = 10.0
+    λ_ais = 20.0
     
     Σ_est_target = DiagonalUnequalVariance()
     Σ_est_shrinkage = :ss
 
     seeded = nothing
 
-    sim_type            = :mcr
+    sim_type            = :cr
     num_cars            = num_cars
-    n_trials            = 25
+    n_trials            = 1
     laps                = 2
 
     p_type              = pol_type
-    n_steps             = 2500
+    n_steps             = 25
     n_samp              = ns
     horizon             = 50
     λ                   = λ

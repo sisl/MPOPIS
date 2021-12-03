@@ -1,23 +1,4 @@
 
-
-using ReinforcementLearning
-using LinearAlgebra
-using IntervalSets
-import ReinforcementLearning.AbstractEnv
-
-abstract type AbstractWeightMethod end
-abstract type AbstractPathIntegralPolicy end
-abstract type AbstractGMPPI_Policy <: AbstractPathIntegralPolicy end
-
-struct Cross_Entropy <: AbstractWeightMethod
-    elite_threshold::Float64
-    num_elite_samples::Int
-end
-
-struct Information_Theoretic <: AbstractWeightMethod
-    λ::Float64
-end
-
 function action_space_size(act_space::ClosedInterval)
     return length(leftendpoint(act_space))
 end
@@ -78,19 +59,40 @@ function compute_weights(weight_method::Information_Theoretic, costs::Vector{Flo
     return weights ./ η
 end
 
-function (env::CartPoleEnv{<:Base.OneTo{Int}})(a::Vector)
-    length(a) == 1 || error("Only implented for 1 step")
-    env(a[1])
+function get_controls_roll_U!(pol::AbstractPathIntegralPolicy, weighted_controls::Vector)
+    as = pol.params.as
+    # Get control (action set for the first time step)
+    control = get_model_controls(action_space(pol.env), weighted_controls[1:as])
+
+    # Roll the control policy so next interation we start with a mean of pol.U
+    if pol.params.horizon > 1
+        pol.U[1:(end-as)] = weighted_controls[(as+1):end]
+        pol.U[(end-as):end] = pol.params.U₀[(end-as):end]
+    else
+        pol.U = weighted_controls
+    end
+    return control
 end
-function (env::CartPoleEnv{<:ClosedInterval})(a::Vector)
-    length(a) == 1 || error("Only implented for 1 step")
-    env(a[1])
+
+function rollout_model(env::AbstractEnv, T::Int, model_controls::Vector, 
+    pol::AbstractPathIntegralPolicy, k::Int, n::Int)
+    model_controls_mat = reshape(model_controls, size(model_controls, 1), 1)
+    rollout_model(env, T, model_controls_mat, pol, k, n)
 end
-function (env::MountainCarEnv{<:ClosedInterval})(a::Vector)
-    length(a) == 1 || error("Only implented for 1 step")
-    env(a[1])
-end
-function (env::MountainCarEnv{<:Base.OneTo{Int}})(a::Vector)
-    length(a) == 1 || error("Only implented for 1 step")
-    env(a[1])
+
+function rollout_model(env::AbstractEnv, T::Int, model_controls::Matrix, 
+    pol::AbstractPathIntegralPolicy, k::Int, n::Int, 
+)
+    as = pol.params.as
+    K = pol.params.num_samples
+    traj_cost = 0.0
+    for t ∈ 1:T
+        controls = as == 1 ? model_controls[t] : model_controls[:,t]
+        env(controls)
+        traj_cost -= reward(env) # Subtracting based on "reward"
+        if pol.params.log
+            pol.logger.trajectories[k+(n-1)*K][t, :] = env.state
+        end
+    end
+    return traj_cost
 end

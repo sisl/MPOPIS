@@ -1,8 +1,3 @@
-using ReinforcementLearning
-using IntervalSets
-using Random
-
-include("./CarRacingTracks/CarRacingTracks.jl")
 
 struct CarRacingEnvParams{T}
     m::T
