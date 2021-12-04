@@ -29,7 +29,6 @@ function simulate_environment(environment;
     opt_its = 10,
     λ_ais = 20.0,
     ce_elite_threshold = 0.8,
-    min_max_sample_perc = 0.1,
     step_factor = 0.01,
     σ = 1.0,
     elite_perc_threshold = 0.8,
@@ -44,8 +43,17 @@ function simulate_environment(environment;
     gif_name = "$environment-$num_cars-$policy_type-$num_samples-$horizon-$λ-$α-"
     cov_v = cov_mat[1,1]
     gif_name = gif_name * "$cov_v-"
+    gif_name = gif_name * "$opt_its-"
     if policy_type == :cemppi
-        gif_name = gif_name * "$opt_its-$ce_elite_threshold-"
+        gif_name = gif_name * "$ce_elite_threshold-"
+    elseif policy_type == :μΣaismppi
+        gif_name = gif_name * "$λ_ais-"
+    elseif policy_type == :μaismppi
+        gif_name = gif_name * "$λ_ais-"
+    elseif policy_type == :pmcmppi
+        gif_name = gif_name * "$λ_ais-"
+    elseif policy_type == :cmamppi
+        gif_name = gif_name * "$elite_perc_threshold-"
     end
     gif_name = gif_name * "$num_trials-$laps.gif"
 
@@ -412,21 +420,8 @@ function get_policy(
             log=pol_log,
             rng=MersenneTwister(),
         )
-    elseif policy_type == :aismppi
+    elseif policy_type == :μΣaismppi
         pol = μΣAISMPPI_Policy(env, 
-            num_samples=num_samples,
-            horizon=horizon,
-            λ=λ,
-            α=α,
-            U₀=U₀,
-            cov_mat=cov_mat,
-            opt_its=opt_its,
-            λ_ais=λ_ais,
-            log=pol_log,
-            rng=MersenneTwister(),
-        )
-    elseif policy_type == :amismppi
-        pol = AMISMPPI_Policy(env, 
             num_samples=num_samples,
             horizon=horizon,
             λ=λ,
@@ -580,7 +575,6 @@ for ii = 1:1
         opt_its = opt_its,
         λ_ais=λ_ais,
         ce_elite_threshold = ce_elite_threshold,
-        min_max_sample_perc = min_max_sample_p,
         step_factor = step_factor,
         σ = σ,
         elite_perc_threshold = elite_perc_threshold,
