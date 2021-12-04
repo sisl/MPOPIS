@@ -15,6 +15,8 @@ import ReinforcementLearning.AbstractEnv
 using Plots
 import Plots.plot
 
+using Reexport
+
 export
     MPPI_Policy,
     GMPPI_Policy,
@@ -31,6 +33,24 @@ export
     within_track,
     exceed_β,
     block_diagm
+    # Random.seed!,
+    # RLBase.reward,
+    # RLBase.action_space,
+    # RLBase.state_space,
+    # RLBase.is_terminated,
+    # RLBase.state,
+    # reset!,
+    _update_states_envs2env,
+    _update_states_env2envs
+
+@reexport ReinforcementLearning.RLBase
+@reexport Plots
+@reexport Random
+
+# RLBase.action_space(env::CarRacingEnv) = env.action_space
+# RLBase.state_space(env::CarRacingEnv{T}) where {T} = env.observation_space
+# RLBase.is_terminated(env::CarRacingEnv) = env.done
+# RLBase.state(env::CarRacingEnv) = env.state
 
 abstract type AbstractWeightMethod end
 abstract type AbstractPathIntegralPolicy end
