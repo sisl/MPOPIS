@@ -8,7 +8,7 @@ using IntervalSets
 using Distributions
 using StatsBase
 using Random
-@rexxport import Random.seed!
+@reexport import Random.seed!
 using CovarianceEstimation
 import CovarianceEstimation.LinearShrinkageTarget
 import CovarianceEstimation.SimpleCovariance
