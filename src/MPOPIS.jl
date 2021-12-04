@@ -3,6 +3,7 @@ module MPOPIS
 
 using Reexport
 using CSV
+using Printf
 using LinearAlgebra
 using IntervalSets
 using Distributions
