@@ -43,9 +43,9 @@ export
     # _update_states_envs2env,
     # _update_states_env2envs
 
-@reexport ReinforcementLearning.RLBase
-@reexport Plots
-@reexport Random
+@reexport using ReinforcementLearning
+@reexport using Plots: plot
+@reexport using Random: seed!
 
 # RLBase.action_space(env::CarRacingEnv) = env.action_space
 # RLBase.state_space(env::CarRacingEnv{T}) where {T} = env.observation_space
