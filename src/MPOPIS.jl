@@ -14,6 +14,7 @@ import CovarianceEstimation.LinearShrinkageTarget
 import CovarianceEstimation.SimpleCovariance
 @reexport using ReinforcementLearning
 import ReinforcementLearning.AbstractEnv
+import ReinforcementLearning.RLBase
 using Plots
 @reexport import Plots.plot
 
@@ -36,12 +37,6 @@ export
     block_diagm,
     _update_states_envs2env,
     _update_states_env2envs
-    
-
-# RLBase.action_space(env::CarRacingEnv) = env.action_space
-# RLBase.state_space(env::CarRacingEnv{T}) where {T} = env.observation_space
-# RLBase.is_terminated(env::CarRacingEnv) = env.done
-# RLBase.state(env::CarRacingEnv) = env.state
 
 abstract type AbstractWeightMethod end
 abstract type AbstractPathIntegralPolicy end

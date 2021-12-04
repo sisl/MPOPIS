@@ -5,6 +5,8 @@ using Dates
 using Plots
 using Random
 using LinearAlgebra
+using Statistics
+using Distributions
 
 using MPOPIS
 
@@ -480,8 +482,8 @@ function quantile_ci(x, p=0.05, q=0.5)
     n = length(x)
     zm = quantile(Normal(0.0, 1.0), p/2)
     zp = quantile(Normal(0.0, 1.0), 1-p/2)
-    j = Int(ceil(n*q + zm*sqrt(n*q*(1-q))))
-    k = Int(ceil(n*q + zp*sqrt(n*q*(1-q))))
+    j = max(Int(ceil(n*q + zm*sqrt(n*q*(1-q)))), 1)
+    k = min(Int(ceil(n*q + zp*sqrt(n*q*(1-q)))), length(x))
     x_sorted = sort(x)
     return x_sorted[j], quantile(x, q), x_sorted[k]
 end
@@ -500,7 +502,7 @@ for ii = 1:1
 
     seeded = nothing
 
-    sim_type            = :cr
+    sim_type            = :mcr
     num_cars            = num_cars
     n_trials            = 1
     laps                = 2
@@ -553,7 +555,7 @@ for ii = 1:1
     println("CMA Elite Perc Thres:  $elite_perc_threshold")
     println("U₀:                    zeros(Float64, $(num_cars*2))")
     println("Σ:                     block_diagm([0.0625, 0.1], $num_cars)")
-    println("Σ_est       :          $Σ_est")
+    println("Σ_est:                 $Σ_est")
     println("State X σ:             $state_x_sigma")
     println("State Y σ:             $state_y_sigma")
     println("State ψ σ:             $state_ψ_sigma")
