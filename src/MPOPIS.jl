@@ -32,7 +32,7 @@ export
     DroneEnv,
     within_track,
     exceed_β,
-    block_diagm,
+    block_diagm
     # Random.seed!,
     # RLBase.reward,
     # RLBase.action_space,
@@ -40,8 +40,8 @@ export
     # RLBase.is_terminated,
     # RLBase.state,
     # reset!,
-    _update_states_envs2env,
-    _update_states_env2envs
+    # _update_states_envs2env,
+    # _update_states_env2envs
 
 @reexport ReinforcementLearning.RLBase
 @reexport Plots
