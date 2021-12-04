@@ -125,7 +125,7 @@ function simulate_environment(environment;
             rew += step_rew
             if plot_steps || save_gif
                 if plot_traj && pol_log
-                    p = plot(env, pol, plot_traj_perc)
+                    p = plot(env, pol, plot_traj_perc, text_output=true)
                 else 
                     p = plot(env)
                 end
@@ -489,9 +489,9 @@ function quantile_ci(x, p=0.05, q=0.5)
 end
 
 for ii = 1:1
-    pol_type = :mppi
+    pol_type = :cmamppi
     
-    num_cars = 1
+    num_cars = 2
     ii == 1
     ns = 375
     oIts = 1
