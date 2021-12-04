@@ -266,39 +266,37 @@ end
 CEMPPI_Policy(env::AbstractEnv; 
     opt_its::Int = 10,
     ce_elite_threshold::Float64 = 0.8,
-    Σ_est::Symbol = :MLE,
-    Σ_est_target::LinearShrinkageTarget = DiagonalUnequalVariance(),
-    Σ_est_shrinkage::Symbol = :lw,
+    Σ_est::Symbol = :mle,
     kwargs...
 kwargs passed to MPPI_Policy_Params
 
-Covariance Estimation shrinkage estimators:
+Options for Σ_est
+    - :mle = maximum liklihood estimation
     - :lw = Lediot & Wolf (http://www.ledoit.net/honey.pdf)
     - :ss = Schaffer & Strimmer (https://strimmerlab.github.io/)
     - :rblw = Rao-Blackwell estimator (https://arxiv.org/pdf/0907.4698.pdf)
     - :oas = Oracle-Approximating (https://arxiv.org/pdf/0907.4698.pdf)
-Covariance Estimation targets
-    - DiagonalUnitVariance
-    - DiagonalCommonVariance
-    - DiagonalUnequalVariance
-    - CommonCovariance
-    - PerfectPositiveCorrelation
-    - ConstantCorrelation
 https://mateuszbaran.github.io/CovarianceEstimation.jl/dev/man/lshrink/
 """
 function CEMPPI_Policy(env::AbstractEnv; 
     opt_its::Int = 10,
     ce_elite_threshold::Float64 = 0.8,
-    Σ_est::Symbol = :MLE,
-    Σ_est_target::LinearShrinkageTarget = DiagonalUnequalVariance(),
-    Σ_est_shrinkage::Symbol = :lw,
+    Σ_est::Symbol = :mle,
     kwargs...
 )
     params, U₀, Σ, rng, mppi_logger = MPPI_Policy_Params(env, :gmppi; kwargs...)
-    if Σ_est == :MLE
+    if Σ_est == :mle
         Σ_est_method = SimpleCovariance()
+    elseif  Σ_est == :lw
+        Σ_est_method = LinearShrinkage(DiagonalUnequalVariance(), :lw)
+    elseif Σ_est == :ss
+        Σ_est_method = LinearShrinkage(DiagonalUnequalVariance(), :ss)
+    elseif Σ_est == :rblw
+        Σ_est_method = LinearShrinkage(DiagonalCommonVariance(), :rblw)
+    elseif Σ_est == :oas
+        Σ_est_method = LinearShrinkage(DiagonalCommonVariance(), :oas)
     else
-        Σ_est_method = LinearShrinkage(Σ_est_target, Σ_est_shrinkage)
+        error("CEMPPI_Policy - Not a valid Σ estimation method")
     end    
     pol = CEMPPI_Policy(params, env, U₀, 
               Σ, opt_its, ce_elite_threshold, 

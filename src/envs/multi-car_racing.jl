@@ -21,7 +21,7 @@ end
 - `N = 2                                        # Number of cars`   
 - `dt = 0.1`,                                   # Time step between actions
 - `δt = 0.01,                                   # Time step used for integration`
-- `track = "./car_racing_tracks/curve.csv,   # Track to load`
+- `track = "./curve.csv,   # Track to load`
 - 'car_params = []                              # Vector of car parameters to use
 - `rng = Random.GLOBAL_RNG`
 """
@@ -29,7 +29,7 @@ function MultiCarRacingEnv(N=2;
     T = Float64,
     dt = 0.1,
     δt = 0.01,
-    track = "./car_racing_tracks/curve.csv",
+    track = "./curve.csv",
     car_params = [],
     rng = Random.GLOBAL_RNG,
 )
