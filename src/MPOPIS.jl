@@ -32,7 +32,7 @@ export
     DroneEnv,
     within_track,
     exceed_β,
-    block_diagm
+    block_diagm,
     # Random.seed!,
     # RLBase.reward,
     # RLBase.action_space,
