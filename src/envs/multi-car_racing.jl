@@ -49,15 +49,15 @@ function MultiCarRacingEnv(N=2;
     
     endpts_l = []
     endpts_r = []
-    single_state_size = length(state_space(envs[1]))
+    single_state_size = length(RLBase.state_space(envs[1]))
     obs_space_vec = Vector{ClosedInterval}(undef, N*single_state_size)
     state = zeros(T, N*single_state_size)
     for (idx, en) in enumerate(envs)
-        endpts_l = [endpts_l; leftendpoint(action_space(en))]
-        endpts_r = [endpts_r; rightendpoint(action_space(en))]
+        endpts_l = [endpts_l; leftendpoint(RLBase.action_space(en))]
+        endpts_r = [endpts_r; rightendpoint(RLBase.action_space(en))]
         start_idx = single_state_size*(idx-1) + 1
         end_idx = single_state_size*idx
-        obs_space_vec[start_idx:end_idx] =  state_space(en)[:]
+        obs_space_vec[start_idx:end_idx] =  RLBase.state_space(en)[:]
     end
     action_space = ClosedInterval{Vector{T}}(endpts_l, endpts_r)
     observation_space = Space(obs_space_vec)
@@ -96,7 +96,7 @@ RLBase.state(env::MultiCarRacingEnv) = env.state
 
 function _update_states_env2envs(env::MultiCarRacingEnv)
     for (idx, en) in enumerate(env.envs)
-        ss_size = length(state_space(en))
+        ss_size = length(RLBase.state_space(en))
         start_idx = ss_size*(idx-1) + 1
         end_idx = ss_size*idx
         en.state = env.state[start_idx:end_idx]
@@ -105,7 +105,7 @@ end
 
 function _update_states_envs2env(env::MultiCarRacingEnv)
     for (idx, en) in enumerate(env.envs)
-        ss_size = length(state_space(en))
+        ss_size = length(RLBase.state_space(en))
         start_idx = ss_size*(idx-1) + 1
         end_idx = ss_size*idx
         env.state[start_idx:end_idx] = en.state

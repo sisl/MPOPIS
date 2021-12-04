@@ -14,7 +14,7 @@ import CovarianceEstimation.LinearShrinkageTarget
 import CovarianceEstimation.SimpleCovariance
 @reexport using ReinforcementLearning
 import ReinforcementLearning.AbstractEnv
-import ReinforcementLearning.RLBase: action_space, state_space
+import ReinforcementLearning.RLBase
 using Plots
 @reexport import Plots.plot
 
