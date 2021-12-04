@@ -1,9 +1,4 @@
 
-using ReinforcementLearning
-using IntervalSets
-using Random
-
-include("./CarRacingTracks/CarRacingTracks.jl")
 
 struct DroneEnvParams{T}
     m::T
@@ -50,7 +45,7 @@ end
 - `ω_max = 7800.0,                              # Motor max rotation speed (rpm)`
 - `dt = 0.1`,                                   # Time step between actions
 - `δt = 0.01,                                   # Time step used for integration`
-- `track = "./envs/CarRacingTracks/curve.csv,   # Track to load`
+- `track = string(@__DIR__, "/car_racing_tracks/curve.csv"),   # Track to load`
 - `lane_width = 5.0,                            # Track lane_width`
 - `rng = Random.GLOBAL_RNG`
 """
@@ -66,7 +61,7 @@ function DroneEnv(;
     ω_max = 7800.0,
     dt = 0.1,
     δt = 0.01,
-    track = "./envs/CarRacingTracks/curve.csv",
+    track = string(@__DIR__, "/car_racing_tracks/curve.csv"),
     lane_width = 5.0,
     rng = Random.GLOBAL_RNG,
 )
@@ -93,7 +88,7 @@ end
 - `T = Float64`
 - `dt = 0.1`,                                   # Time step between actions
 - `δt = 0.01,                                   # Time step used for integration`
-- `track = "./envs/CarRacingTracks/curve.csv,   # Track to load`
+- `track = string(@__DIR__, "/car_racing_tracks/curve.csv"),   # Track to load`
 - `lane_width = 5.0,                            # Track lane_width`
 - `rng = Random.GLOBAL_RNG`
 """
@@ -101,7 +96,7 @@ function DroneEnv(params::DroneEnvParams;
     T = Float64,
     dt = 0.1,
     δt = 0.01,
-    track = "./envs/CarRacingTracks/curve.csv",
+    track = string(@__DIR__, "/car_racing_tracks/curve.csv"),
     lane_width = 5.0,
     rng = Random.GLOBAL_RNG,
 )

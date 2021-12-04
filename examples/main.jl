@@ -1,38 +1,14 @@
-using Profile
+
 using Printf
 using ProgressMeter
 using Dates
+using Plots
+using Random
+using LinearAlgebra
+using Statistics
+using Distributions
 
-include("./envs/CarRacing.jl")
-include("./envs/MultiCarRacing.jl")
-include("./envs/DroneEnv.jl")
-include("./agents/mppi.jl")
-include("./envs/plots.jl")
-
-
-function RLBase.reward(env::MountainCarEnv{A,T}) where {A,T} 
-    rew = 0.0
-    
-    if env.state[1] >= env.params.goal_pos && 
-        env.state[2] >= env.params.goal_velocity
-        rew += 100000
-    end
-    
-    rew += abs(env.state[2])
-    rew += env.done ? 0.0 : -1.0
-
-    return rew
-end
-
-function RLBase.reward(env::CartPoleEnv{A,T}) where {A,T} 
-    rew = 0.0
-    # rew += abs(env.state[3])
-    # if abs(env.state[1]) > env.params.xthreshold ||
-    #     abs(env.state[3]) > env.params.thetathreshold
-    #     rew += -1000
-    # end
-    rew += env.done ? 0.0 : 1.0
-end
+using MPOPIS
 
 
 function simulate_environment(environment;
@@ -55,7 +31,6 @@ function simulate_environment(environment;
     opt_its = 10,
     λ_ais = 20.0,
     ce_elite_threshold = 0.8,
-    min_max_sample_perc = 0.1,
     step_factor = 0.01,
     σ = 1.0,
     elite_perc_threshold = 0.8,
@@ -64,15 +39,23 @@ function simulate_environment(environment;
     state_x_sigma=0.0,
     state_y_sigma=0.0,
     state_ψ_sigma=0.0,
-    Σ_est_target=DiagonalUnequalVariance(),
-    Σ_est_shrinkage=:lw,
+    Σ_est=:mle,
 )
 
     gif_name = "$environment-$num_cars-$policy_type-$num_samples-$horizon-$λ-$α-"
     cov_v = cov_mat[1,1]
     gif_name = gif_name * "$cov_v-"
+    gif_name = gif_name * "$opt_its-"
     if policy_type == :cemppi
-        gif_name = gif_name * "$opt_its-$ce_elite_threshold-"
+        gif_name = gif_name * "$ce_elite_threshold-"
+    elseif policy_type == :μΣaismppi
+        gif_name = gif_name * "$λ_ais-"
+    elseif policy_type == :μaismppi
+        gif_name = gif_name * "$λ_ais-"
+    elseif policy_type == :pmcmppi
+        gif_name = gif_name * "$λ_ais-"
+    elseif policy_type == :cmamppi
+        gif_name = gif_name * "$elite_perc_threshold-"
     end
     gif_name = gif_name * "$num_trials-$laps.gif"
 
@@ -114,8 +97,8 @@ function simulate_environment(environment;
         pol = get_policy(
                 env, policy_type, num_samples, horizon,
                 λ, α, U₀, cov_mat, opt_its, ce_elite_threshold, 
-                step_factor, σ, elite_perc_threshold,  pol_log,
-                Σ_est_target, Σ_est_shrinkage, λ_ais,
+                step_factor, σ, elite_perc_threshold,  pol_log, 
+                Σ_est, λ_ais,
         )
         if isnothing(seeded)
             seed!(env, k)
@@ -142,7 +125,7 @@ function simulate_environment(environment;
             rew += step_rew
             if plot_steps || save_gif
                 if plot_traj && pol_log
-                    p = plot(env, pol, plot_traj_perc)
+                    p = plot(env, pol, plot_traj_perc, text_output=true)
                 else 
                     p = plot(env)
                 end
@@ -385,7 +368,7 @@ function get_policy(
     env, policy_type, num_samples, horizon, λ, 
     α, U₀, cov_mat, opt_its, ce_elite_threshold, 
     step_factor, σ, elite_perc_threshold, pol_log,
-    Σ_est_target, Σ_est_shrinkage, λ_ais,
+    Σ_est, λ_ais,
 )
     if policy_type == :gmppi
         pol = GMPPI_Policy(env, 
@@ -408,8 +391,7 @@ function get_policy(
             cov_mat=cov_mat,
             opt_its=opt_its,
             ce_elite_threshold=ce_elite_threshold,
-            Σ_est_target = Σ_est_target,
-            Σ_est_shrinkage = Σ_est_shrinkage,
+            Σ_est = Σ_est,
             log=pol_log,
             rng=MersenneTwister(),
         )
@@ -440,21 +422,8 @@ function get_policy(
             log=pol_log,
             rng=MersenneTwister(),
         )
-    elseif policy_type == :aismppi
-        pol = AISMPPI_Policy(env, 
-            num_samples=num_samples,
-            horizon=horizon,
-            λ=λ,
-            α=α,
-            U₀=U₀,
-            cov_mat=cov_mat,
-            opt_its=opt_its,
-            λ_ais=λ_ais,
-            log=pol_log,
-            rng=MersenneTwister(),
-        )
-    elseif policy_type == :amismppi
-        pol = AMISMPPI_Policy(env, 
+    elseif policy_type == :μΣaismppi
+        pol = μΣAISMPPI_Policy(env, 
             num_samples=num_samples,
             horizon=horizon,
             λ=λ,
@@ -513,64 +482,33 @@ function quantile_ci(x, p=0.05, q=0.5)
     n = length(x)
     zm = quantile(Normal(0.0, 1.0), p/2)
     zp = quantile(Normal(0.0, 1.0), 1-p/2)
-    j = Int(ceil(n*q + zm*sqrt(n*q*(1-q))))
-    k = Int(ceil(n*q + zp*sqrt(n*q*(1-q))))
+    j = max(Int(ceil(n*q + zm*sqrt(n*q*(1-q)))), 1)
+    k = min(Int(ceil(n*q + zp*sqrt(n*q*(1-q)))), length(x))
     x_sorted = sort(x)
     return x_sorted[j], quantile(x, q), x_sorted[k]
 end
 
-for ii = 6:6
-    num_cars = 2
-    if ii == 1
-        pol_type = :amismppi
-        ns = 375
-        oIts = 1
-        λ = 10.0
-        λ_ais = 20.0
-    elseif ii == 2
-        pol_type = :amismppi
-        ns = 375
-        oIts = 2
-        λ = 10.0
-        λ_ais = 20.0
-    elseif ii == 3
-        pol_type = :amismppi
-        ns = 375
-        oIts = 3
-        λ = 10.0
-        λ_ais = 20.0
-    elseif ii == 4
-        pol_type = :amismppi
-        ns = 375
-        oIts = 4
-        λ = 10.0
-        λ_ais = 20.0
-    elseif ii == 5
-        pol_type = :amismppi
-        ns = 375
-        oIts = 5
-        λ = 10.0
-        λ_ais = 20.0
-    elseif ii == 6
-        pol_type = :amismppi
-        ns = 375
-        oIts = 6
-        λ = 10.0
-        λ_ais = 20.0
-    end
+for ii = 1:1
+    pol_type = :cmamppi
     
-    Σ_est_target = DiagonalUnequalVariance()
-    Σ_est_shrinkage = :ss
+    num_cars = 2
+    ii == 1
+    ns = 375
+    oIts = 1
+    λ = 10.0
+    λ_ais = 20.0
+    
+    Σ_est = :mle
 
     seeded = nothing
 
     sim_type            = :mcr
     num_cars            = num_cars
-    n_trials            = 25
+    n_trials            = 1
     laps                = 2
 
     p_type              = pol_type
-    n_steps             = 2500
+    n_steps             = 25
     n_samp              = ns
     horizon             = 50
     λ                   = λ
@@ -585,8 +523,7 @@ for ii = 6:6
     U₀                  = zeros(Float64, num_cars*2)
     cov_mat             = block_diagm([0.0625, 0.1], num_cars)
 
-    Σ_est_target        = Σ_est_target
-    Σ_est_shrinkage     = Σ_est_shrinkage
+    Σ_est_target        = Σ_est
 
     state_x_sigma       = 0.0
     state_y_sigma       = 0.0
@@ -618,8 +555,7 @@ for ii = 6:6
     println("CMA Elite Perc Thres:  $elite_perc_threshold")
     println("U₀:                    zeros(Float64, $(num_cars*2))")
     println("Σ:                     block_diagm([0.0625, 0.1], $num_cars)")
-    println("Σ_est_target:          $Σ_est_target")
-    println("Σ_est_shrinkage:       $Σ_est_shrinkage")
+    println("Σ_est:                 $Σ_est")
     println("State X σ:             $state_x_sigma")
     println("State Y σ:             $state_y_sigma")
     println("State ψ σ:             $state_ψ_sigma")
@@ -641,7 +577,6 @@ for ii = 6:6
         opt_its = opt_its,
         λ_ais=λ_ais,
         ce_elite_threshold = ce_elite_threshold,
-        min_max_sample_perc = min_max_sample_p,
         step_factor = step_factor,
         σ = σ,
         elite_perc_threshold = elite_perc_threshold,
@@ -654,8 +589,7 @@ for ii = 6:6
         state_x_sigma=state_x_sigma,
         state_y_sigma=state_y_sigma,
         state_ψ_sigma=state_ψ_sigma,
-        Σ_est_target=Σ_est_target,
-        Σ_est_shrinkage=Σ_est_shrinkage,
+        Σ_est=Σ_est,
     )
 end
 
@@ -684,8 +618,7 @@ end
 #         ns = 20
 #     end
     
-#     Σ_est_target = DiagonalUnequalVariance()
-#     Σ_est_shrinkage = :ss
+#     Σ_est = Σ_est
 
 #     seeded = nothing
 
@@ -706,8 +639,7 @@ end
 #     U₀                  = [0.0]
 #     cov_mat             = [1.5]
 
-#     Σ_est_target        = Σ_est_target
-#     Σ_est_shrinkage     = Σ_est_shrinkage
+#     Σ_est               = Σ_est
 
 #     seeded              = seeded
 
@@ -731,8 +663,7 @@ end
 #     println("CMA Elite Perc Thres:  $elite_perc_threshold")
 #     println("U₀:                    [0.0]")
 #     println("Σ:                     [1.5]")
-#     println("Σ_est_target:          $Σ_est_target")
-#     println("Σ_est_shrinkage:       $Σ_est_shrinkage")
+#     println("Σ_est       :          $Σ_est")
 #     println("Seeded:                $seeded")
 #     println()
 
@@ -757,7 +688,6 @@ end
 #         save_gif=save_gif, 
 #         plot_steps=plot_steps,
 #         seeded=seeded,
-#         Σ_est_target=Σ_est_target,
-#         Σ_est_shrinkage=Σ_est_shrinkage,
+#         Σ_est=Σ_est,
 #     )
 # end

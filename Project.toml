@@ -1,14 +1,17 @@
+name = "MPOPIS"
+uuid = "e8a75bc8-90e1-4072-945a-20230e5738f6"
+authors = ["Dylan Asmar <asmar@stanford.edu>"]
+version = "0.1.0"
+
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 CovarianceEstimation = "587fd27a-f159-11e8-2dae-1979310e6154"
-Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
-Profile = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
-ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 ReinforcementLearning = "158674fc-8238-5cab-b5ba-03dfc80d1318"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"

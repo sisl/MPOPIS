@@ -1,4 +1,3 @@
-include("./CarRacing.jl")
 
 mutable struct MultiCarRacingEnv{A,T,R<:AbstractRNG} <: AbstractEnv
     N::Int
@@ -19,18 +18,18 @@ end
 
 # Keyword arguments
 - `T = Float64`
-- `N = 2                                        # Number of cars`   
-- `dt = 0.1`,                                   # Time step between actions
-- `δt = 0.01,                                   # Time step used for integration`
-- `track = "./envs/CarRacingTracks/curve.csv,   # Track to load`
-- 'car_params = []                              # Vector of car parameters to use
+- `N = 2                                                     # Number of cars`   
+- `dt = 0.1`,                                                # Time step between actions
+- `δt = 0.01,                                                # Time step used for integration`
+- `track = string(@__DIR__, "/car_racing_tracks/curve.csv"), # Track to load`
+- 'car_params = []                                           # Vector of car parameters to use
 - `rng = Random.GLOBAL_RNG`
 """
 function MultiCarRacingEnv(N=2;
     T = Float64,
     dt = 0.1,
     δt = 0.01,
-    track = "./envs/CarRacingTracks/curve.csv",
+    track = string(@__DIR__, "/car_racing_tracks/curve.csv"),
     car_params = [],
     rng = Random.GLOBAL_RNG,
 )
