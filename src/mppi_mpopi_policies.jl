@@ -106,7 +106,7 @@ mutable struct MPPI_Policy{R<:AbstractRNG} <: AbstractPathIntegralPolicy
 end
 
 function MPPI_Policy(env::AbstractEnv; kwargs...)
-    params, U₀, Σ, rng, mppi_logger = get_MPPI_policy_params(env, :mppi; kwargs...)
+    params, U₀, Σ, rng, mppi_logger = MPPI_Policy_Params(env, :mppi; kwargs...)
     return MPPI_Policy(params, env, U₀, Σ, rng, mppi_logger)
 end
 

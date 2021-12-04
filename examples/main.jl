@@ -5,7 +5,6 @@ using Dates
 
 using Random
 using Plots
-import CovarianceEstimation.DiagonalUnequalVariance
 
 using MPOPIS
 
@@ -39,8 +38,7 @@ function simulate_environment(environment;
     state_x_sigma=0.0,
     state_y_sigma=0.0,
     state_ψ_sigma=0.0,
-    Σ_est_target=DiagonalUnequalVariance(),
-    Σ_est_shrinkage=:lw,
+    Σ_est=:mle,
 )
 
     gif_name = "$environment-$num_cars-$policy_type-$num_samples-$horizon-$λ-$α-"
@@ -89,8 +87,8 @@ function simulate_environment(environment;
         pol = get_policy(
                 env, policy_type, num_samples, horizon,
                 λ, α, U₀, cov_mat, opt_its, ce_elite_threshold, 
-                step_factor, σ, elite_perc_threshold,  pol_log,
-                Σ_est_target, Σ_est_shrinkage, λ_ais,
+                step_factor, σ, elite_perc_threshold,  pol_log, 
+                Σ_est, λ_ais,
         )
         if isnothing(seeded)
             seed!(env, k)
@@ -360,7 +358,7 @@ function get_policy(
     env, policy_type, num_samples, horizon, λ, 
     α, U₀, cov_mat, opt_its, ce_elite_threshold, 
     step_factor, σ, elite_perc_threshold, pol_log,
-    Σ_est_target, Σ_est_shrinkage, λ_ais,
+    Σ_est, λ_ais,
 )
     if policy_type == :gmppi
         pol = GMPPI_Policy(env, 
@@ -383,8 +381,7 @@ function get_policy(
             cov_mat=cov_mat,
             opt_its=opt_its,
             ce_elite_threshold=ce_elite_threshold,
-            Σ_est_target = Σ_est_target,
-            Σ_est_shrinkage = Σ_est_shrinkage,
+            Σ_est = Σ_est,
             log=pol_log,
             rng=MersenneTwister(),
         )
@@ -504,8 +501,7 @@ for ii = 1:1
     λ = 10.0
     λ_ais = 20.0
     
-    Σ_est_target = DiagonalUnequalVariance()
-    Σ_est_shrinkage = :ss
+    Σ_est = :mle
 
     seeded = nothing
 
@@ -530,8 +526,7 @@ for ii = 1:1
     U₀                  = zeros(Float64, num_cars*2)
     cov_mat             = block_diagm([0.0625, 0.1], num_cars)
 
-    Σ_est_target        = Σ_est_target
-    Σ_est_shrinkage     = Σ_est_shrinkage
+    Σ_est_target        = Σ_est
 
     state_x_sigma       = 0.0
     state_y_sigma       = 0.0
@@ -563,8 +558,7 @@ for ii = 1:1
     println("CMA Elite Perc Thres:  $elite_perc_threshold")
     println("U₀:                    zeros(Float64, $(num_cars*2))")
     println("Σ:                     block_diagm([0.0625, 0.1], $num_cars)")
-    println("Σ_est_target:          $Σ_est_target")
-    println("Σ_est_shrinkage:       $Σ_est_shrinkage")
+    println("Σ_est       :          $Σ_est")
     println("State X σ:             $state_x_sigma")
     println("State Y σ:             $state_y_sigma")
     println("State ψ σ:             $state_ψ_sigma")
@@ -599,8 +593,7 @@ for ii = 1:1
         state_x_sigma=state_x_sigma,
         state_y_sigma=state_y_sigma,
         state_ψ_sigma=state_ψ_sigma,
-        Σ_est_target=Σ_est_target,
-        Σ_est_shrinkage=Σ_est_shrinkage,
+        Σ_est=Σ_est,
     )
 end
 
@@ -629,8 +622,7 @@ end
 #         ns = 20
 #     end
     
-#     Σ_est_target = DiagonalUnequalVariance()
-#     Σ_est_shrinkage = :ss
+#     Σ_est = Σ_est
 
 #     seeded = nothing
 
@@ -651,8 +643,7 @@ end
 #     U₀                  = [0.0]
 #     cov_mat             = [1.5]
 
-#     Σ_est_target        = Σ_est_target
-#     Σ_est_shrinkage     = Σ_est_shrinkage
+#     Σ_est               = Σ_est
 
 #     seeded              = seeded
 
@@ -676,8 +667,7 @@ end
 #     println("CMA Elite Perc Thres:  $elite_perc_threshold")
 #     println("U₀:                    [0.0]")
 #     println("Σ:                     [1.5]")
-#     println("Σ_est_target:          $Σ_est_target")
-#     println("Σ_est_shrinkage:       $Σ_est_shrinkage")
+#     println("Σ_est       :          $Σ_est")
 #     println("Seeded:                $seeded")
 #     println()
 
@@ -702,7 +692,6 @@ end
 #         save_gif=save_gif, 
 #         plot_steps=plot_steps,
 #         seeded=seeded,
-#         Σ_est_target=Σ_est_target,
-#         Σ_est_shrinkage=Σ_est_shrinkage,
+#         Σ_est=Σ_est,
 #     )
 # end
