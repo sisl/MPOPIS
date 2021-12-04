@@ -1,21 +1,21 @@
 
 module MPOPIS
 
+using Reexport
 using CSV
 using LinearAlgebra
 using IntervalSets
 using Distributions
 using StatsBase
 using Random
+@rexxport import Random.seed!
 using CovarianceEstimation
 import CovarianceEstimation.LinearShrinkageTarget
 import CovarianceEstimation.SimpleCovariance
-using ReinforcementLearning
+@reexport using ReinforcementLearning
 import ReinforcementLearning.AbstractEnv
 using Plots
-import Plots.plot
-
-using Reexport
+@reexport import Plots.plot
 
 export
     MPPI_Policy,
@@ -42,10 +42,6 @@ export
     # reset!,
     # _update_states_envs2env,
     # _update_states_env2envs
-
-@reexport using ReinforcementLearning
-@reexport using Plots: plot
-@reexport using Random: seed!
 
 # RLBase.action_space(env::CarRacingEnv) = env.action_space
 # RLBase.state_space(env::CarRacingEnv{T}) where {T} = env.observation_space
