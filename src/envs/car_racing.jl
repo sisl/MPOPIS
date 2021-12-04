@@ -63,7 +63,7 @@ end
 - `dt = 0.1`,                                   # Time step between actions
 - `δt = 0.01,                                   # Time step used for integration`
 - `β_limit = deg2rad(45)                        # Beta penalty limit`
-- `track = "curve.csv",   # Track to load`
+- `track = string(@__DIR__, "/car_racing_tracks/curve.csv"),   # Track to load`
 ****** TO-DO Add lane_width
 - `rng = Random.GLOBAL_RNG`
 """
@@ -89,7 +89,7 @@ function CarRacingEnv(;
     dt = 0.1,
     δt = 0.01,
     β_limit = deg2rad(45),
-    track = "curve.csv",
+    track = string(@__DIR__, "/car_racing_tracks/curve.csv"),
     track_sample_factor = 20,
     rng = Random.GLOBAL_RNG,
 )
@@ -121,9 +121,9 @@ end
 
 # Keyword arguments
 - `T = Float64`
-- `dt = 0.1`,                                   # Time step between actions
-- `δt = 0.01,                                   # Time step used for integration`
-- `track = "curve.csv",   # Track to load`
+- `dt = 0.1`,                                                   # Time step between actions
+- `δt = 0.01,                                                   # Time step used for integration`
+- `track = string(@__DIR__, "/car_racing_tracks/curve.csv"),   # Track to load`
 - `rng = Random.GLOBAL_RNG`
 """
 function CarRacingEnv(
@@ -131,7 +131,7 @@ function CarRacingEnv(
     T = Float64,
     dt = 0.1,
     δt = 0.01,
-    track = "curve.csv",
+    track = string(@__DIR__, "/car_racing_tracks/curve.csv"),
     track_sample_factor = 10,
     rng = Random.GLOBAL_RNG,
 )
