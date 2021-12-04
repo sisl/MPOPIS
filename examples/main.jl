@@ -2,9 +2,9 @@
 using Printf
 using ProgressMeter
 using Dates
-
-using Random
 using Plots
+using Random
+using LinearAlgebra
 
 using MPOPIS
 

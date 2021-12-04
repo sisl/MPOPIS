@@ -31,17 +31,12 @@ export
     MultiCarRacingEnv,
     DroneEnv,
     within_track,
+    calculate_β,
     exceed_β,
-    block_diagm
-    # Random.seed!,
-    # RLBase.reward,
-    # RLBase.action_space,
-    # RLBase.state_space,
-    # RLBase.is_terminated,
-    # RLBase.state,
-    # reset!,
-    # _update_states_envs2env,
-    # _update_states_env2envs
+    block_diagm,
+    _update_states_envs2env,
+    _update_states_env2envs
+    
 
 # RLBase.action_space(env::CarRacingEnv) = env.action_space
 # RLBase.state_space(env::CarRacingEnv{T}) where {T} = env.observation_space
