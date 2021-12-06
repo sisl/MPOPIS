@@ -3,7 +3,7 @@ A version of of model predictive path integral control (MPPI) that allows for th
 
 ## Policy Options
 Versions of MPPI and MPOPI implemented
- - Basic MPPI
+ - Non-Iterative MPPI and GMPPI
    - [MPPI](https://github.com/sisl/MPOPIS/blob/b89b71102a4a751b56b5aa151751f07527c75c29/src/mppi_mpopi_policies.jl#L99) (`:mppi`): Model Predictive Path Integral Control[^1][^2]
    - [GMPPI](https://github.com/sisl/MPOPIS/blob/b89b71102a4a751b56b5aa151751f07527c75c29/src/mppi_mpopi_policies.jl#L213) (`:gmppi`): generalized version of MPPI, treating the control sequence as one control vector with a combined covariance matrix
  - MPOPI
