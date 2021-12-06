@@ -89,9 +89,7 @@ function simulate_environment(environment;
     @printf(" : %7s", "Ex Time")
     @printf("\n")
     for k ∈ 1:num_trials
-        # Start timer
-        time_start = Dates.now()
-
+        
         env = get_environment(environment, 
             continuous=continuous, num_cars=num_cars);
         pol = get_policy(
@@ -110,6 +108,9 @@ function simulate_environment(environment;
         
         pm = Progress(num_steps, 1, "Trial $k ....", 50)
         
+        # Start timer
+        time_start = Dates.now()
+
         lap_time = zeros(Int, laps)
         v_mean_log = Vector{Float64}()
         v_max_log = Vector{Float64}()
@@ -367,7 +368,7 @@ end
 function get_policy(
     env, policy_type, num_samples, horizon, λ, 
     α, U₀, cov_mat, opt_its, ce_elite_threshold, 
-    step_factor, σ, elite_perc_threshold, pol_log,
+    σ, elite_perc_threshold, pol_log,
     Σ_est, λ_ais,
 )
     if policy_type == :gmppi
@@ -406,19 +407,6 @@ function get_policy(
             opt_its=opt_its,
             σ=σ,
             elite_perc_threshold=elite_perc_threshold,
-            log=pol_log,
-            rng=MersenneTwister(),
-        )
-    elseif policy_type == :nesmppi
-        pol = NESMPPI_Policy(env, 
-            num_samples=num_samples,
-            horizon=horizon,
-            λ=λ,
-            α=α,
-            U₀=U₀,
-            cov_mat=cov_mat,
-            opt_its=opt_its,
-            step_factor=step_factor,
             log=pol_log,
             rng=MersenneTwister(),
         )
@@ -516,7 +504,6 @@ for ii = 1:1
     opt_its             = oIts
     λ_ais               = λ_ais
     ce_elite_threshold  = 0.8
-    min_max_sample_p    = 0.0 
     step_factor         = 0.0001
     σ                   = 0.5
     elite_perc_threshold= 0.8
@@ -549,13 +536,12 @@ for ii = 1:1
     println("# Opt Iterations:      $opt_its")
     println("λ_ais:                 $λ_ais")
     println("CE Elite Threshold:    $ce_elite_threshold")
-    println("Min Max Sample Perc:   $min_max_sample_p")
     println("NES Step Factor:       $step_factor")
     println("CMA Step Factor (σ):   $σ")
     println("CMA Elite Perc Thres:  $elite_perc_threshold")
-    println("U₀:                    zeros(Float64, $(num_cars*2))")
-    println("Σ:                     block_diagm([0.0625, 0.1], $num_cars)")
-    println("Σ_est:                 $Σ_est")
+    println("U₀:                    [$(U₀[1]), ... , $(U₀[end])]")
+    println("Σ:                     block_diagm([$(cov_mat[1,1]) $(cov_mat[1,2]); $(cov_mat[2,1]) $(cov_mat[2,2])], $num_cars)")
+    println("CE Σ_est method:       $Σ_est")
     println("State X σ:             $state_x_sigma")
     println("State Y σ:             $state_y_sigma")
     println("State ψ σ:             $state_ψ_sigma")

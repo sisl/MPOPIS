@@ -257,7 +257,7 @@ mutable struct CEMPPI_Policy{R<:AbstractRNG} <: AbstractGMPPI_Policy
     Σ::Matrix{Float64}
     opt_its::Int
     ce_elite_threshold::Float64
-    Σ_estimation_method::LinearShrinkage
+    Σ_estimation_method::Union{LinearShrinkage, SimpleCovariance}
     rng::R
     logger::MPPI_Logger
 end

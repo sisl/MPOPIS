@@ -29,7 +29,13 @@ function plot(track::Track)
 
 end
 
-function plot(env::CarRacingEnv; car_only::Bool=false, car_color::Int=1, text_output=false)
+function plot(
+    env::CarRacingEnv; 
+    car_only::Bool=false, 
+    car_color::Int=1, 
+    text_output=false, 
+    text_xy=(80.0, -60.0),
+)
     if mod(car_color, 6) == 0 car_color += 1 end
     x, y, ψ = env.state[1:3]
     l_f = env.params.l_f
@@ -55,7 +61,7 @@ function plot(env::CarRacingEnv; car_only::Bool=false, car_color::Int=1, text_ou
         plt = plot(env.track) 
     end
     
-    plot!(car_xy[:,1], car_xy[:,2], 
+    plt = plot!(car_xy[:,1], car_xy[:,2], 
         linestype = :path, 
         linewidth = 2, 
         linecolor = palette(:lighttest)[mod1(car_color, 7)], 
@@ -80,12 +86,18 @@ function plot(env::CarRacingEnv; car_only::Bool=false, car_color::Int=1, text_ou
             out_string, "Steering Ang (deg)", rad2deg(env.state[7]))
         out_string = @sprintf("%s\n%-24s:%5.1f", 
             out_string, "Gas/Brake (%)", env.state[8]*100)
-        annotate!(80, -60, text(out_string, "courier bold", :left, :black, 14))
+        annotate!(text_xy[1], text_xy[2], text(out_string, "courier bold", :left, :black, 14))
     end
-
+    return plt
 end
 
-function plot(env::CarRacingEnv, pol::AbstractPathIntegralPolicy, perc=1.0; text_output=false)
+function plot(
+    env::CarRacingEnv, 
+    pol::AbstractPathIntegralPolicy, 
+    perc=1.0; 
+    text_output=false, 
+    text_xy=(80.0, -60.0),
+)
     K = pol.params.num_samples
     trajs = pol.logger.trajectories
     traj_weights = pol.logger.traj_weights
@@ -95,7 +107,7 @@ function plot(env::CarRacingEnv, pol::AbstractPathIntegralPolicy, perc=1.0; text
 
     order = sortperm(traj_weights, rev=true)
     
-    p = plot(env, text_output=text_output)
+    p = plot(env, text_output=text_output, text_xy=text_xy)
 
     for (ii, k) ∈ enumerate(order)
         col_idx = (K - ii + 1) / K
@@ -111,16 +123,22 @@ function plot(env::CarRacingEnv, pol::AbstractPathIntegralPolicy, perc=1.0; text
     return p
 end
 
-function plot(env::MultiCarRacingEnv; text_output=false)
+function plot(env::MultiCarRacingEnv; text_output=false, text_xy=(80.0, -60.0))
     p = plot(env.envs[1], car_color=1, text_output=text_output)
     for ii in 2:env.N
-        p = plot(env.envs[ii], car_only=true, car_color=ii, text_output=text_output)
+        p = plot(env.envs[ii], car_only=true, car_color=ii, text_output=text_output, text_xy=text_xy)
     end
     return p
 end
 
 
-function plot(env::MultiCarRacingEnv, pol::AbstractPathIntegralPolicy, perc=1.0; text_output=false)
+function plot(
+    env::MultiCarRacingEnv, 
+    pol::AbstractPathIntegralPolicy, 
+    perc=1.0; 
+    text_output=false,
+    text_xy=(80.0, -60.0),    
+)
     K = pol.params.num_samples
     trajs = pol.logger.trajectories
     traj_weights = pol.logger.traj_weights
@@ -130,7 +148,7 @@ function plot(env::MultiCarRacingEnv, pol::AbstractPathIntegralPolicy, perc=1.0;
 
     order = sortperm(traj_weights, rev=true)
     
-    p = plot(env, text_output=text_output)
+    p = plot(env, text_output=text_output, text_xy=text_xy)
 
     for (ii, k) ∈ enumerate(order)
         col_idx = (K - ii + 1) / K

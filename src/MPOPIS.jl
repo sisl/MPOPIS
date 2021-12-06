@@ -18,6 +18,8 @@ import ReinforcementLearning.AbstractEnv
 import ReinforcementLearning.RLBase
 using Plots
 @reexport import Plots.plot
+using ProgressMeter
+using Dates
 
 export
     MPPI_Policy,
@@ -37,7 +39,10 @@ export
     exceed_β,
     block_diagm,
     _update_states_envs2env,
-    _update_states_env2envs
+    _update_states_env2envs,
+    simulate_car_racing,
+    simulate_mountaincar,
+    simulate_cartpole
 
 abstract type AbstractWeightMethod end
 abstract type AbstractPathIntegralPolicy end
@@ -58,9 +63,13 @@ include("envs/car_racing_tracks/car_racing_tracks.jl")
 include("envs/car_racing.jl")
 include("envs/multi-car_racing.jl")
 include("envs/drone_env.jl")
-include("envs/mppi_RLBase_mods.jl")
 include("utils.jl")
 include("mppi_mpopi_policies.jl")
-include("plots.jl")
+include("envs/plots.jl")
+
+include("examples/example_utils.jl")
+include("examples/car_example.jl")
+include("examples/mountaincar_example.jl")
+include("examples/cartpole_example.jl")
 
 end # module
