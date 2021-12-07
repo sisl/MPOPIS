@@ -26,7 +26,7 @@ Use the julia package manager to add the MPOPIS module:
 Using the built in example to simulate the MountainCar envrironment:
 ```julia
 using MPOPIS
-simulate_mountaincar(num_trials=5)
+simulate_mountaincar(policy_type=:cemppi, num_trials=5)
 ```
 
 Simulate the Car Racing environment and save a gif:
