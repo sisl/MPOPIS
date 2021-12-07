@@ -1,7 +1,7 @@
 # MPOPIS (Model Predictive Optimized Path Integral Strategies)
 A version of of model predictive path integral control (MPPI) that allows for the implementation of adaptive importance sampling (AIS) algorithms into the original importance sampling step. Model predictive optimized path integral control (MPOPI) is more sample efficient than MPPI achieving better performance with fewer samples.
 
- - [3 Car Video](https://youtu.be/dDifSfxtuls)
+ - [3 Car Video (MPPI and MPOPI)](https://youtu.be/dDifSfxtuls)
 
 ## Policy Options
 Versions of MPPI and MPOPI implemented
@@ -15,7 +15,7 @@ Versions of MPPI and MPOPI implemented
    - [CE](https://github.com/sisl/MPOPIS/blob/b89b71102a4a751b56b5aa151751f07527c75c29/src/mppi_mpopi_policies.jl#L253) (`:cemppi`): cross-entropy method[^5][^6]
    - [CMA](https://github.com/sisl/MPOPIS/blob/b89b71102a4a751b56b5aa151751f07527c75c29/src/mppi_mpopi_policies.jl#L356) (`:cmamppi`): covariance matrix adaptation evolutionary strategy[^5][^7]
 
-**For implementation details reference the source code. For simulation parameters used, reference the [wiki](../../wiki/Simulation-Results-and-Parameter-Settings).**
+**For implementation details reference the source code. For simulation parameters used, reference the [wiki](../../wiki/MPOPIS-Details).**
 
 ## Getting Started
 Use the julia package manager to add the MPOPIS module:
