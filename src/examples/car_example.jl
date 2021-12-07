@@ -120,7 +120,7 @@ function simulate_car_racing(;
     @printf("%-30s%d\n", "Seed:", seed)
     @printf("\n")
     
-    # Must of policy log on if pltting trajectories
+    # Must have policy log on if plotting trajectories
     if plot_traj
         pol_log = true
     end
@@ -206,7 +206,7 @@ function simulate_car_racing(;
             # Apply action to envrionment
             env(act)
             cnt += 1
-            # Ger reward at the step
+            # Get reward at the step
             step_rew = reward(env)
             rew += step_rew
 
