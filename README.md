@@ -9,7 +9,7 @@ Versions of MPPI and MPOPI implemented
    - [MPPI](https://github.com/sisl/MPOPIS/blob/b89b71102a4a751b56b5aa151751f07527c75c29/src/mppi_mpopi_policies.jl#L99) (`:mppi`): Model Predictive Path Integral Control[^1][^2]
    - [GMPPI](https://github.com/sisl/MPOPIS/blob/b89b71102a4a751b56b5aa151751f07527c75c29/src/mppi_mpopi_policies.jl#L213) (`:gmppi`): generalized version of MPPI, treating the control sequence as one control vector with a combined covariance matrix
  - MPOPI
-   - [PMC](https://github.com/sisl/MPOPIS/blob/b89b71102a4a751b56b5aa151751f07527c75c29/src/mppi_mpopi_policies.jl#L626) (`:pmcmppi`): population monte algorithm with one distribution[^3]
+   - [PMC](https://github.com/sisl/MPOPIS/blob/b89b71102a4a751b56b5aa151751f07527c75c29/src/mppi_mpopi_policies.jl#L626) (`:pmcmppi`): population Monte Carlo algorithm with one distribution[^3]
    - [μ-AIS](https://github.com/sisl/MPOPIS/blob/b89b71102a4a751b56b5aa151751f07527c75c29/src/mppi_mpopi_policies.jl#L490) (`:μaismppi`): mean only moment matching AIS algorithm
    - [μΣ-AIS](https://github.com/sisl/MPOPIS/blob/b89b71102a4a751b56b5aa151751f07527c75c29/src/mppi_mpopi_policies.jl#L555) (`:μΣaismppi`): mean and covariance moment matching AIS algorithm similar to Mixture-PMC[^4]
    - [CE](https://github.com/sisl/MPOPIS/blob/b89b71102a4a751b56b5aa151751f07527c75c29/src/mppi_mpopi_policies.jl#L253) (`:cemppi`): cross-entropy method[^5][^6]
@@ -18,24 +18,25 @@ Versions of MPPI and MPOPI implemented
 **For implementation details reference the source code. For simulation parameters used, reference the [wiki](../../wiki/Simulation-Results-and-Parameter-Settings).**
 
 ## Getting Started
+Use the julia package manager to add the MPOPIS module:
 ```julia
 ] add https://github.com/sisl/MOPOPIS
 ```
 
-To simulate the MountainCar envrironment and ensure everything is working
+Using the built in example to simulate the MountainCar envrironment:
 ```julia
 using MPOPIS
-simulate_mountaincar(num_trials=5)
+simulate_mountaincar(policy_type=:cemppi, num_trials=5)
 ```
 
-To simulate the Car Racing environment and save a gif
+Simulate the Car Racing environment and save a gif:
 ```julia
 simulate_car_racing(save_gif=true)
 ```
 
 <img src="https://github.com/sisl/MPOPIS/blob/main/gifs/cr-1-cemppi-150-50-10.0-1.0-10-0.8-ss-1-2.gif" width="750" height="750" />
 
-Adding the trajectories and simulating multiple cars
+Also plotting the trajectories and simulating multiple cars
 ```julia
 simulate_car_racing(num_cars=3, plot_traj=true, save_gif=true)
 ```
