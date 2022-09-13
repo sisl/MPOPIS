@@ -1,3 +1,4 @@
 *.vscode
 Manifest.toml
 gifs/
+*.gif

@@ -34,6 +34,7 @@ export
     CarRacingEnv,
     MultiCarRacingEnv,
     DroneEnv,
+    MuJoCoBenchmarkEnv,
     within_track,
     calculate_β,
     exceed_β,
@@ -63,6 +64,7 @@ include("envs/car_racing_tracks/car_racing_tracks.jl")
 include("envs/car_racing.jl")
 include("envs/multi-car_racing.jl")
 include("envs/drone_env.jl")
+include("envs/mujoco_benchmark_env.jl")
 include("utils.jl")
 include("mppi_mpopi_policies.jl")
 include("envs/plots.jl")
