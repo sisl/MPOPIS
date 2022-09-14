@@ -2,6 +2,7 @@ using MPOPIS
 
 # simulate_envpool_env(
 #     "Swimmer-v4";
+#     frame_skip = 4,
 #     num_trials = 5,
 #     policy_type = :mppi,
 #     num_steps = 50,
@@ -11,6 +12,7 @@ using MPOPIS
 
 # simulate_envpool_env(
 #     "Swimmer-v4";
+#     frame_skip = 4,
 #     num_trials = 5,
 #     policy_type = :cemppi,
 #     num_steps = 50,
@@ -22,15 +24,17 @@ using MPOPIS
 
 simulate_envpool_env(
     "Ant-v4";
+    frame_skip = 5,
     num_trials = 5,
     policy_type = :mppi,
     num_steps = 20,
-    num_samples = 1500,
+    num_samples = 3000,
     λ = 1.0,
 )
 
 # simulate_envpool_env(
 #     "Ant-v4";
+#     frame_skip = 5,
 #     num_trials = 5,
 #     policy_type = :cemppi,
 #     num_steps = 20,

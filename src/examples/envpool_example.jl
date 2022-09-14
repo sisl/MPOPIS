@@ -1,5 +1,6 @@
 function simulate_envpool_env(
     env_name;
+    frame_skip = 10,
 
     num_trials = 1,
     num_steps = 200,
@@ -95,7 +96,12 @@ function simulate_envpool_env(
 
     for k ∈ 1:num_trials
 
-        env = EnvpoolEnv(env_name; num_envs=num_samples, rng=MersenneTwister())
+        env = EnvpoolEnv(
+            env_name;
+            frame_skip=frame_skip,
+            num_envs=num_samples,
+            rng=MersenneTwister()
+        )
 
         pol = get_policy(
             policy_type,
