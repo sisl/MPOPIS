@@ -116,7 +116,7 @@ function simulate_envpool_env(
         @printf(io_stream, "%-30s", "Σ")
         cov_mat_diag = diag(cov_mat)
         for cov_mat_dᵢ ∈ cov_mat_diag
-            @printf("%.4f ", cov_mat_dᵢ)
+            @printf(io_stream, "%.4f ", cov_mat_dᵢ)
         end
         @printf(io_stream, "\n")
         @printf(io_stream, "%-30s%d\n", "Seed:", seed)
