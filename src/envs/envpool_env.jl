@@ -1,12 +1,13 @@
 using PyCall
 
+
 mutable struct EnvpoolEnv{A,T,R<:AbstractRNG} <: AbstractEnv
-    const task::String
+    task::String
     py_env::PyObject
-    const action_space::A
-    const observation_space::Space{Vector{ClosedInterval{T}}}
-    const num_states::Int
-    const num_envs::Int
+    action_space::A
+    observation_space::Space{Vector{ClosedInterval{T}}}
+    num_states::Int
+    num_envs::Int
     info::Dict
     rews::Vector{T}
     state::Matrix{T}
@@ -15,6 +16,21 @@ mutable struct EnvpoolEnv{A,T,R<:AbstractRNG} <: AbstractEnv
     acts::Vector{Vector{T}}
     rng::R
 end
+# mutable struct EnvpoolEnv{A,T,R<:AbstractRNG} <: AbstractEnv
+#     const task::String
+#     py_env::PyObject
+#     const action_space::A
+#     const observation_space::Space{Vector{ClosedInterval{T}}}
+#     const num_states::Int
+#     const num_envs::Int
+#     info::Dict
+#     rews::Vector{T}
+#     state::Matrix{T}
+#     done::Bool
+#     t::Int
+#     acts::Vector{Vector{T}}
+#     rng::R
+# end
 
 """
 EnvpoolEnv(task ;kwargs...)
@@ -34,15 +50,27 @@ function EnvpoolEnv(
     py"""
     import envpool
     def get_envs_ep(env_name, env_type, num_envs, frame_skip, seeds=42, noise=0.0):
-        return envpool.make(
-            env_name,
-            env_type=env_type,
-            num_envs=num_envs,
-            seed=seeds,
-            reset_noise_scale=noise,
-            frame_skip=frame_skip,
-            gym_reset_return_info=True
-    )
+        if env_name == "Ant-v4":
+            return envpool.make(
+                env_name,
+                env_type=env_type,
+                num_envs=num_envs,
+                seed=seeds,
+                reset_noise_scale=noise,
+                frame_skip=frame_skip,
+                gym_reset_return_info=True,
+                terminate_when_unhealthy=False
+            )
+        else:
+            return envpool.make(
+                env_name,
+                env_type=env_type,
+                num_envs=num_envs,
+                seed=seeds,
+                reset_noise_scale=noise,
+                frame_skip=frame_skip,
+                gym_reset_return_info=True
+            )
     """
 
     py_env = py"get_envs_ep"(task, "gym", num_envs, frame_skip)
