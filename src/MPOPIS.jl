@@ -43,7 +43,8 @@ export
     _update_states_env2envs,
     simulate_car_racing,
     simulate_mountaincar,
-    simulate_cartpole
+    simulate_cartpole,
+    simulate_envpool_env
 
 abstract type AbstractWeightMethod end
 abstract type AbstractPathIntegralPolicy end
@@ -75,5 +76,7 @@ include("examples/example_utils.jl")
 include("examples/car_example.jl")
 include("examples/mountaincar_example.jl")
 include("examples/cartpole_example.jl")
+
+include("examples/envpool_example.jl")
 
 end # module
