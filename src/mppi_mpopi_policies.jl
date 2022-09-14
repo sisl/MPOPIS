@@ -46,7 +46,15 @@ function MPPI_Policy_Params(env::AbstractEnv, type::Symbol;
     log::Bool = false,
 )
 
-    ss = length(state(env))                    # State space size
+    # State space size
+    if isa(state(env), Vector)
+        ss = length(state(env))
+    elseif isa(state(env), Matrix)
+        ss = size(state(env), 2)
+    else
+        error("State must be Vector or Matrix")
+    end
+
     as = action_space_size(action_space(env)) # Action space size
     cs = as * horizon                         # Control size (number of actions per sample)
 
@@ -137,6 +145,44 @@ function (pol::MPPI_Policy)(env::AbstractEnv)
     return control
 end
 
+function calculate_trajectory_costs(pol::MPPI_Policy, env::EnvpoolEnv)
+    K, T = pol.params.num_samples, pol.params.horizon
+    as = pol.params.as
+    γ = pol.params.λ*(1-pol.params.α)
+
+    # Get samples for which our trajectories will be defined
+    P = Distributions.MvNormal(pol.Σ)
+    E = rand(pol.rng, P, K, T)
+    Σ_inv = Distributions.invcov(P)
+
+    trajectory_cost = zeros(Float64, K)
+
+    for t ∈ 1:T
+        Eₜ = E[:, t]
+        # Eᵢ = E[k,t]
+        uₜ = pol.U[((t-1)*as+1):(t*as)]
+
+        Vₜ = repeat(uₜ', K) + reduce(hcat, E[:, t])'
+
+        control_costs = [γ * uₜ' * Σ_inv * Eᵢ for Eᵢ in Eₜ]
+
+        model_controls = get_model_controls(action_space(env), Vₜ)
+
+        env(model_controls)
+
+        # Subtrating based on "reward", Adding based on "cost"
+        trajectory_cost = trajectory_cost - reward(env) + control_costs
+        if pol.params.log
+            for k ∈ 1:K
+                pol.logger.trajectories[k][t, :] = state(env)[k, :]
+            end
+        end
+    end
+    reset!(env; restore=true)
+
+    return trajectory_cost, E
+end
+
 function calculate_trajectory_costs(pol::MPPI_Policy, env::AbstractEnv)
     K, T = pol.params.num_samples, pol.params.horizon
     as = pol.params.as
@@ -191,9 +237,29 @@ function (pol::AbstractGMPPI_Policy)(env::AbstractEnv)
     return control
 end
 
+function simulate_model(pol::AbstractGMPPI_Policy, env::EnvpoolEnv,
+    E::Matrix{Float64}, Σ_inv::Matrix{Float64}, U_orig::Vector{Float64},
+)
+    K, T = pol.params.num_samples, pol.params.horizon
+    as = pol.params.as
+    γ = pol.params.λ*(1-pol.params.α)
+
+    trajectory_cost = zeros(Float64, K)
+
+    control_costs = [γ * U_orig'*Σ_inv*(pol.U + E[:,k] .- U_orig) for k in 1:K]
+
+        # Vₖ = pol.U + E[:,k]
+    Vₖ = repeat(pol.U', K) + E'
+
+    model_controls = get_model_controls(action_space(env), Vₖ, T)
+    trajectory_cost = rollout_model(env, T, model_controls, pol)
+    trajectory_cost += control_costs  # Adding based on "cost"
+
+    return trajectory_cost
+end
+
 function simulate_model(pol::AbstractGMPPI_Policy, env::AbstractEnv,
     E::Matrix{Float64}, Σ_inv::Matrix{Float64}, U_orig::Vector{Float64},
-    n::Int=1,
 )
     K, T = pol.params.num_samples, pol.params.horizon
     as = pol.params.as
@@ -205,7 +271,7 @@ function simulate_model(pol::AbstractGMPPI_Policy, env::AbstractEnv,
         Vₖ = pol.U + E[:,k]
         control_cost = γ * U_orig'*Σ_inv*(Vₖ .- U_orig)
         model_controls = get_model_controls(action_space(sim_env), Vₖ, T)
-        trajectory_cost[k] = rollout_model(sim_env, T, model_controls, pol, k, n)
+        trajectory_cost[k] = rollout_model(sim_env, T, model_controls, pol)
         trajectory_cost[k] += control_cost  # Adding based on "cost"
     end
     return trajectory_cost
