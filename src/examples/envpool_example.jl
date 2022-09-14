@@ -170,6 +170,10 @@ function simulate_envpool_env(
             @printf(" : %7.2f", seconds_ran)
             @printf("\n")
         end
+        # env.py_env.close()
+        env = nothing
+        pol = nothing
+        GC.gc()
     end
 
     # Output summary results
