@@ -27,10 +27,19 @@ function simulate_envpool_env(
     pol_log = false,
 )
 
+    env = EnvpoolEnv(env_name; num_envs=1)
+    as = length(action_space(env).left)
+    if isempty(U₀)
+        U₀ = zeros(as)
+    end
+    if isempty(cov_mat)
+        cov_mat = Matrix(I(as)*0.5)
+    end
+
     io_stream = nothing
     if log_runs
         fname = "$(env_name)_$(frame_skip)_$(policy_type)_$(num_steps)_$(num_trials)" *
-            "_$(seed)_$(horizon)_$(λ)_$(α)_$(num_samples)"
+            "_$(seed)_$(horizon)_$(λ)_$(α)_$(U₀[1])_$(cov_mat[1,1])_$(num_samples)"
         if policy_type != :mppi && policy_type != :gmppi
             fname = fname * "_$(ais_its)"
         end
@@ -45,15 +54,6 @@ function simulate_envpool_env(
         end
         fname = "./logs/" * fname * ".txt"
         io_stream = open(fname, "w")
-    end
-
-    env = EnvpoolEnv(env_name; num_envs=1)
-    as = length(action_space(env).left)
-    if isempty(U₀)
-        U₀ = zeros(as)
-    end
-    if isempty(cov_mat)
-        cov_mat = Matrix(I(as)*0.5)
     end
 
     @printf("\n")
