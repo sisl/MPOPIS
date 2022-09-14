@@ -7,7 +7,7 @@ function simulate_envpool_env(
     policy_type = :cemppi,
     num_samples = 150,
     horizon = 50,
-    λ = 10.0,
+    λ = 1.0,
     α = 1.0,
 
     U₀ = [],
@@ -33,7 +33,7 @@ function simulate_envpool_env(
         U₀ = zeros(as)
     end
     if isempty(cov_mat)
-        cov_mat = block_diagm(ones(as)*0.5)
+        cov_mat = Matrix(I(as)*0.5)
     end
 
     @printf("\n")
@@ -58,8 +58,12 @@ function simulate_envpool_env(
         end
     end
     @printf("%-30s[%.4f, ..., %.4f]\n", "U₀", U₀[1], U₀[end])
-    # @printf("%-30s%s([%.4f %.4f; %.4f %.4f], %d)\n", "Σ", "block_diagm",
-    #     cov_mat[1,1], cov_mat[end, end], num_cars)
+    @printf("%-30s", "Σ")
+    cov_mat_diag = diag(cov_mat)
+    for cov_mat_dᵢ ∈ cov_mat_diag
+        @printf("%.4f ", cov_mat_dᵢ)
+    end
+    @printf("\n")
     @printf("%-30s%d\n", "Seed:", seed)
     @printf("\n")
 
