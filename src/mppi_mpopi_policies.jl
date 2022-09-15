@@ -271,7 +271,7 @@ function simulate_model(pol::AbstractGMPPI_Policy, env::AbstractEnv,
         Vₖ = pol.U + E[:,k]
         control_cost = γ * U_orig'*Σ_inv*(Vₖ .- U_orig)
         model_controls = get_model_controls(action_space(sim_env), Vₖ, T)
-        trajectory_cost[k] = rollout_model(sim_env, T, model_controls, pol)
+        trajectory_cost[k] = rollout_model(sim_env, T, model_controls, pol, k)
         trajectory_cost[k] += control_cost  # Adding based on "cost"
     end
     return trajectory_cost

@@ -137,7 +137,7 @@ function rollout_model(env::AbstractEnv, T::Int, model_controls::Matrix,
         env(controls)
         traj_cost -= reward(env) # Subtracting based on "reward"
         if pol.params.log
-            pol.logger.trajectories[k+(n-1)*K][t, :] = env.state
+            pol.logger.trajectories[k][t, :] = env.state
         end
     end
     return traj_cost
