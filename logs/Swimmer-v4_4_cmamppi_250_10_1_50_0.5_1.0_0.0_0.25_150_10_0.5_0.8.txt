@@ -1,0 +1,17 @@
+
+Env Name:                     Swimmer-v4
+Num Trails:                   10
+Num Steps:                    250
+Policy Type:                  cmamppi
+Num samples                   150
+Horizon                       50
+λ (inverse temp):             0.50
+α (control cost param):       1.00
+# AIS Iterations:             10
+CMA Step Factor (σ):          0.50
+CMA Elite Perc Thres:         0.80
+U₀                            [0.0000, ..., 0.0000]
+Σ                             0.2500 0.2500 
+Seed:                         1
+
+Trial    #:       Reward :   Steps:  Reward/Step : Ex Time

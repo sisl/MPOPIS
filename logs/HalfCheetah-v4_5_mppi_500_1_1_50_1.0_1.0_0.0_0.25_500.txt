@@ -1,0 +1,23 @@
+
+Env Name:                     HalfCheetah-v4
+Num Trails:                   1
+Num Steps:                    500
+Policy Type:                  mppi
+Num samples                   500
+Horizon                       50
+λ (inverse temp):             1.00
+α (control cost param):       1.00
+U₀                            [0.0000, ..., 0.0000]
+Σ                             0.2500 0.2500 0.2500 0.2500 0.2500 0.2500 
+Seed:                         1
+
+Trial    #:       Reward :   Steps:  Reward/Step : Ex Time
+Trial    1:      9585.37 :     500:        19.17 :  270.67
+-----------------------------------
+Trials AVE:      9585.37 :  500.00:        19.17 :  270.67
+Trials STD:          NaN :     NaN:          NaN :     NaN
+Trials MED:      9585.37 :  500.00:        19.17 :  270.67
+Trials L95:      9585.37 :  500.00:        19.17 :  270.67
+Trials U95:      9585.37 :  500.00:        19.17 :  270.67
+Trials MIN:      9585.37 :  500.00:        19.17 :  270.67
+Trials MAX:      9585.37 :  500.00:        19.17 :  270.67
