@@ -1,0 +1,35 @@
+
+Env Name:                     HalfCheetah-v4
+Num Trails:                   10
+Num Steps:                    250
+Policy Type:                  cemppi
+Num samples                   50
+Horizon                       50
+λ (inverse temp):             1.00
+α (control cost param):       1.00
+# AIS Iterations:             5
+CE Elite Threshold:           0.80
+CE Σ Est Method:              ss
+U₀                            [0.0000, ..., 0.0000]
+Σ                             0.2500 0.2500 0.2500 0.2500 0.2500 0.2500 
+Seed:                         1
+
+Trial    #:       Reward :   Steps:  Reward/Step : Ex Time
+Trial    1:      2191.75 :     250:         8.77 :  152.67
+Trial    2:      2274.50 :     250:         9.10 :  149.91
+Trial    3:      2988.82 :     250:        11.96 :  146.99
+Trial    4:      2041.07 :     250:         8.16 :  149.66
+Trial    5:      2459.05 :     250:         9.84 :  150.50
+Trial    6:      1858.40 :     250:         7.43 :  148.50
+Trial    7:      1782.68 :     250:         7.13 :  150.00
+Trial    8:      2116.66 :     250:         8.47 :  149.49
+Trial    9:      1855.30 :     250:         7.42 :  149.66
+Trial   10:      1970.58 :     250:         7.88 :  150.41
+-----------------------------------
+Trials AVE:      2153.88 :  250.00:         8.62 :  149.78
+Trials STD:       360.28 :    0.00:         1.44 :    1.45
+Trials MED:      2078.86 :  250.00:         8.32 :  149.78
+Trials L95:      1855.30 :  250.00:         7.42 :  148.50
+Trials U95:      2459.05 :  250.00:         9.84 :  150.50
+Trials MIN:      1782.68 :  250.00:         7.13 :  146.99
+Trials MAX:      2988.82 :  250.00:        11.96 :  152.67
