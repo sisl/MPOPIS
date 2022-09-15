@@ -1,0 +1,28 @@
+
+Env Name:                     Swimmer-v4
+Num Trails:                   20
+Num Steps:                    250
+Policy Type:                  cemppi
+Num samples                   250
+Horizon                       50
+λ (inverse temp):             0.50
+α (control cost param):       1.00
+# AIS Iterations:             6
+CE Elite Threshold:           0.80
+CE Σ Est Method:              mle
+U₀                            [0.0000, ..., 0.0000]
+Σ                             0.2500 0.2500 
+Seed:                         1
+
+Trial    #:       Reward :   Steps:  Reward/Step : Ex Time
+Trial    1:        48.40 :     250:         0.19 :  385.85
+Trial    2:        55.12 :     250:         0.22 :  382.59
+Trial    3:        45.17 :     250:         0.18 :  387.69
+Trial    4:        55.32 :     250:         0.22 :  381.66
+Trial    5:        56.11 :     250:         0.22 :  379.70
+Trial    6:        46.93 :     250:         0.19 :  385.27
+Trial    7:        47.96 :     250:         0.19 :  382.16
+Trial    8:        54.03 :     250:         0.22 :  380.33
+Trial    9:        46.04 :     250:         0.18 :  392.14
+Trial   10:        56.71 :     250:         0.23 :  378.14
+Trial   11:        47.10 :     250:         0.19 :  384.50
