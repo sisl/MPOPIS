@@ -2,16 +2,16 @@
 Env Name:                     Ant-v4
 Num Trails:                   10
 Num Steps:                    250
-Policy Type:                  mppi
-Num samples                   3000
+Policy Type:                  cemppi
+Num samples                   150
 Horizon                       50
 λ (inverse temp):             1.00
 α (control cost param):       1.00
+# AIS Iterations:             10
+CE Elite Threshold:           0.80
+CE Σ Est Method:              ss
 U₀                            [0.0000, ..., 0.0000]
 Σ                             0.2500 0.2500 0.2500 0.2500 0.2500 0.2500 0.2500 0.2500 
 Seed:                         1
 
 Trial    #:       Reward :   Steps:  Reward/Step : Ex Time
-Trial    1:      2139.53 :     250:         8.56 : 1238.75
-Trial    2:      1966.25 :     250:         7.87 : 1235.99
-Trial    3:      2435.62 :     250:         9.74 : 1228.30
