@@ -49,7 +49,7 @@ function simulate_envpool_env(
         elseif policy_type ∈ [:μΣaismppi, :μaismppi, :pmcmppi]
             fname = fname * "_$(λ_ais_)"
         elseif policy_type == :cmamppi
-            fname = fname * "_$(cma_σ_)"
+            fname = fname * "_$(cma_σ)"
             fname = fname * "_$(cma_elite_threshold)"
         end
         fname = "./logs/" * fname * ".txt"
