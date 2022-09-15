@@ -17,3 +17,4 @@ Seed:                         1
 Trial    #:       Reward :   Steps:  Reward/Step : Ex Time
 Trial    1:        54.29 :     250:         0.22 :  342.95
 Trial    2:        56.19 :     250:         0.22 :  346.68
+Trial    3:        52.33 :     250:         0.21 :  351.79
