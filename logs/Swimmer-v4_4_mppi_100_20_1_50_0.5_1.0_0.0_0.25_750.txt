@@ -1,0 +1,17 @@
+
+Env Name:                     Swimmer-v4
+Num Trails:                   20
+Num Steps:                    100
+Policy Type:                  mppi
+Num samples                   750
+Horizon                       50
+λ (inverse temp):             0.50
+α (control cost param):       1.00
+U₀                            [0.0000, ..., 0.0000]
+Σ                             0.2500 0.2500 
+Seed:                         1
+
+Trial    #:       Reward :   Steps:  Reward/Step : Ex Time
+Trial    1:        33.86 :     100:         0.34 :   36.27
+Trial    2:        31.20 :     100:         0.31 :   36.62
+Trial    3:        34.30 :     100:         0.34 :   35.61
