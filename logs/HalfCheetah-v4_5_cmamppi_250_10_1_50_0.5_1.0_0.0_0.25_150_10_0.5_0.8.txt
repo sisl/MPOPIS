@@ -1,5 +1,5 @@
 
-Env Name:                     Swimmer-v4
+Env Name:                     HalfCheetah-v4
 Num Trails:                   10
 Num Steps:                    250
 Policy Type:                  cmamppi
@@ -11,9 +11,8 @@ Horizon                       50
 CMA Step Factor (σ):          0.50
 CMA Elite Perc Thres:         0.80
 U₀                            [0.0000, ..., 0.0000]
-Σ                             0.2500 0.2500 
+Σ                             0.2500 0.2500 0.2500 0.2500 0.2500 0.2500 
 Seed:                         1
 
 Trial    #:       Reward :   Steps:  Reward/Step : Ex Time
-Trial    1:        38.27 :     250:         0.15 :  555.89
-Trial    2:        38.21 :     250:         0.15 :  538.61
+Trial    1:      2447.56 :     250:         9.79 :  611.35
