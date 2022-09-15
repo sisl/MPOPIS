@@ -1,7 +1,7 @@
 
 Env Name:                     Swimmer-v4
 Num Trails:                   10
-Num Steps:                    500
+Num Steps:                    250
 Policy Type:                  cemppi
 Num samples                   100
 Horizon                       50
@@ -15,4 +15,5 @@ U₀                            [0.0000, ..., 0.0000]
 Seed:                         1
 
 Trial    #:       Reward :   Steps:  Reward/Step : Ex Time
-Trial    1:        62.41 :     500:         0.12 :  716.46
+Trial    1:        45.71 :     250:         0.18 :  219.48
+Trial    2:        53.96 :     250:         0.22 :  215.88
