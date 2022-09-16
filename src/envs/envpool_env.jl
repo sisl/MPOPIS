@@ -20,14 +20,17 @@ end
 EnvpoolEnv(task ;kwargs...)
 
 # Keyword arguments
-
+- `task::String = "Swimmer-v4",  # EnvPool task name`
+- `T = Float64,`
+- `num_envs::Int = 100,          # Number of environments`
+- `frame_skip::Int = 10,         # Frame skip rate parameter`
+- `rng = Random.GLOBAL_RNG,`
 """
 function EnvpoolEnv(
-    task="Swimmer-v4";
+    task::String="Swimmer-v4";
     T=Float64,
-    num_envs=100,
-    frame_skip=10,
-    random_seed=42,
+    num_envs::Int=100,
+    frame_skip::Int=10,
     rng=Random.GLOBAL_RNG
 )
 
@@ -99,9 +102,11 @@ RLBase.action_space(env::EnvpoolEnv) = env.action_space
 RLBase.state_space(env::EnvpoolEnv) = env.observation_space
 RLBase.is_terminated(env::EnvpoolEnv) = env.done
 RLBase.state(env::EnvpoolEnv) = env.state
-
 RLBase.reward(env::EnvpoolEnv) = env.rews
 
+"""
+    The keywork argument `restore` is used to restore the environments based on `acts`
+"""
 function RLBase.reset!(env::EnvpoolEnv{A,T}; restore=false) where {A,T}
     env_data = env.py_env.reset()
     env.info = env_data[end]
@@ -117,7 +122,15 @@ function RLBase.reset!(env::EnvpoolEnv{A,T}; restore=false) where {A,T}
     return env
 end
 
+"""
+    a::Vector
+    Size of vector must be size of the action space. If a vector, will replicate to create a
+    matrix to propagate all environments at once with the same actions
 
+    a::Matrix
+    The matrix size must be num_envs x action_space_size. Propagates all environments one
+    with the corresponding action.
+"""
 function (env::EnvpoolEnv)(a::Vector)
     acts = repeat(a', env.num_envs)
     env(acts; update_acts=true)
@@ -145,6 +158,10 @@ function _step!(env::EnvpoolEnv, a::Matrix{Float64})
     return env
 end
 
+"""
+    Helper function used to restore environments based on the acts field. This is needed
+        based on using EnvPool in the standard format.
+"""
 function _restore_using_acts!(env::EnvpoolEnv)
     env_data = nothing
     if isempty(env.acts)

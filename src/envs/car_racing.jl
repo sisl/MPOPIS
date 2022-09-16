@@ -42,7 +42,7 @@ end
     CarRacingEnv(;kwargs...)
 
 # Keyword arguments
-- `T = Float64`
+- `T = Float64,`
 - `m = 2000.0, 			                        # Mass (kg)`
 - `I_zz = 3764.0, 		                    	# Moment of inertia in vertical direction (kg m^2)`
 - `h_cm = 0.3,	 			                    # Height of CoM above ground (m)`
