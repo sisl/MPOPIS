@@ -33,7 +33,6 @@ export
     Track,
     CarRacingEnv,
     MultiCarRacingEnv,
-    DroneEnv,
     EnvpoolEnv,
     within_track,
     calculate_β,
@@ -64,19 +63,14 @@ end
 include("envs/car_racing_tracks/car_racing_tracks.jl")
 include("envs/car_racing.jl")
 include("envs/multi-car_racing.jl")
-include("envs/drone_env.jl")
-
 include("envs/envpool_env.jl")
-
 include("utils.jl")
 include("mppi_mpopi_policies.jl")
 include("envs/plots.jl")
-
 include("examples/example_utils.jl")
 include("examples/car_example.jl")
 include("examples/mountaincar_example.jl")
 include("examples/cartpole_example.jl")
-
 include("examples/envpool_example.jl")
 
 end # module
