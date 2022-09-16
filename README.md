@@ -1,5 +1,5 @@
 # MPOPIS (Model Predictive Optimized Path Integral Strategies)
-A version of of model predictive path integral control (MPPI) that allows for the implementation of adaptive importance sampling (AIS) algorithms into the original importance sampling step. Model predictive optimized path integral control (MPOPI) is more sample efficient than MPPI achieving better performance with fewer samples. A video of MPPI and MPOPI controlling 3 cars side by side for comparison can be seen [here](https://youtu.be/dDifSfxtuls).
+A version of model predictive path integral control (MPPI) that allows for the implementation of adaptive importance sampling (AIS) algorithms into the original importance sampling step. Model predictive optimized path integral control (MPOPI) is more sample efficient than MPPI achieving better performance with fewer samples. A video of MPPI and MPOPI controlling 3 cars side by side for comparison can be seen [here](https://youtu.be/dDifSfxtuls). More details can be found in the [wiki](../../wiki/MPOPIS-Details).
 
 The addition of AIS enables the algorithm to use a better set of samples for the calculation of the control. A depiction of how the samples evolve over iterations can be seen in the following gif.
 #### MPOPI (CE) 150 Samples, 10 Iterations
@@ -23,12 +23,16 @@ Versions of MPPI and MPOPI implemented
 ## Getting Started
 Use the julia package manager to add the MPOPIS module:
 ```julia
-] add https://github.com/sisl/MOPOPIS
+] add https://github.com/sisl/MPOPIS
+using MPOPIS
+```
+If you want to use the MuJoCo environments, ensure you have `envpool` installed in your `PyCall` distribution:
+```julia
+install_mujoco_requirements()
 ```
 
-Using the built in example to simulate the MountainCar envrironment:
+Now, we can use the built-in example to simulate the MountainCar environment:
 ```julia
-using MPOPIS
 simulate_mountaincar(policy_type=:cemppi, num_trials=5)
 ```
 
@@ -44,6 +48,51 @@ Also plotting the trajectories and simulating multiple cars
 simulate_car_racing(num_cars=3, plot_traj=true, save_gif=true)
 ```
 <img src="https://github.com/sisl/MPOPIS/blob/main/gifs/mcr-3-cemppi-150-50-10.0-1.0-10-0.8-ss-1-2.gif" width="750" height="750" />
+
+Run a MuJoCo environment:
+```julia
+simulate_envpool_env(
+    "HalfCheetah-v4";
+    frame_skip = 5,
+    num_trials = 2,
+    policy_type = :cemppi,
+    num_steps = 50,
+    num_samples = 100,
+    ais_its = 5,
+    λ = 1.0,
+    ce_Σ_est = :ss,
+    seed = 1,
+)
+```
+The output should be something similar to:
+```
+Env Name:                     HalfCheetah-v4
+Num Trails:                   2
+Num Steps:                    50
+Policy Type:                  cemppi
+Num samples                   100
+Horizon                       50
+λ (inverse temp):             1.00
+α (control cost param):       1.00
+# AIS Iterations:             5
+CE Elite Threshold:           0.80
+CE Σ Est Method:              ss
+U₀                            [0.0000, ..., 0.0000]
+Σ                             0.2500 0.2500 0.2500 0.2500 0.2500 0.2500 
+Seed:                         1
+
+Trial    #:       Reward :   Steps:  Reward/Step : Ex Time
+Trial    1:       140.71 :      50:         2.81 :   17.51
+Trial    2:       127.32 :      50:         2.55 :   17.89
+-----------------------------------
+Trials AVE:       134.01 :   50.00:         2.68 :   17.70
+Trials STD:         9.47 :    0.00:         0.19 :    0.27
+Trials MED:       134.01 :   50.00:         2.68 :   17.70
+Trials L95:       127.32 :   50.00:         2.55 :   17.51
+Trials U95:       140.71 :   50.00:         2.81 :   17.89
+Trials MIN:       127.32 :   50.00:         2.55 :   17.51
+Trials MAX:       140.71 :   50.00:         2.81 :   17.89
+```
 
 [^1]: Grady Williams, Nolan Wagener, Brian Goldfain, Paul Drews, James M. Rehg, Byron Boots, and Evangelos A. Theodorou. Information theoretic MPC for model-based reinforcement learning. Proceedings - IEEE International Conference on Robotics and Automation, 2017. doi: 10.1109/ICRA.2017.7989202.
 [^2]: Grady Robert Williams. Model predictive path integral control: Theoretical foundations and applications to autonomous driving. PhD thesis, Georgia Institute of Technology, 2019.
