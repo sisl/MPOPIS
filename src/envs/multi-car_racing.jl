@@ -18,7 +18,7 @@ end
 
 # Keyword arguments
 - `T = Float64`
-- `N = 2                                                     # Number of cars`   
+- `N = 2                                                     # Number of cars`
 - `dt = 0.1`,                                                # Time step between actions
 - `δt = 0.01,                                                # Time step used for integration`
 - `track = string(@__DIR__, "/car_racing_tracks/curve.csv"), # Track to load`
@@ -26,14 +26,14 @@ end
 - `rng = Random.GLOBAL_RNG`
 """
 function MultiCarRacingEnv(N=2;
-    T = Float64,
-    dt = 0.1,
-    δt = 0.01,
-    track = string(@__DIR__, "/car_racing_tracks/curve.csv"),
-    car_params = [],
-    rng = Random.GLOBAL_RNG,
+    T=Float64,
+    dt=0.1,
+    δt=0.01,
+    track=string(@__DIR__, "/car_racing_tracks/curve.csv"),
+    car_params=[],
+    rng=Random.GLOBAL_RNG
 )
-    
+
     length(car_params) <= N || error("# Car parameters must be ≤ # cars")
 
     envs = Vector{CarRacingEnv}(undef, N)
@@ -44,20 +44,20 @@ function MultiCarRacingEnv(N=2;
             cre = CarRacingEnv(T=T, dt=dt, δt=δt, track=track, rng=rng)
         end
         envs[ii] = cre
-    end 
+    end
 
-    
+
     endpts_l = []
     endpts_r = []
     single_state_size = length(RLBase.state_space(envs[1]))
-    obs_space_vec = Vector{ClosedInterval}(undef, N*single_state_size)
-    state = zeros(T, N*single_state_size)
+    obs_space_vec = Vector{ClosedInterval}(undef, N * single_state_size)
+    state = zeros(T, N * single_state_size)
     for (idx, en) in enumerate(envs)
         endpts_l = [endpts_l; leftendpoint(RLBase.action_space(en))]
         endpts_r = [endpts_r; rightendpoint(RLBase.action_space(en))]
-        start_idx = single_state_size*(idx-1) + 1
-        end_idx = single_state_size*idx
-        obs_space_vec[start_idx:end_idx] =  RLBase.state_space(en)[:]
+        start_idx = single_state_size * (idx - 1) + 1
+        end_idx = single_state_size * idx
+        obs_space_vec[start_idx:end_idx] = RLBase.state_space(en)[:]
     end
     action_space = ClosedInterval{Vector{T}}(endpts_l, endpts_r)
     observation_space = Space(obs_space_vec)
@@ -80,7 +80,7 @@ function MultiCarRacingEnv(N=2;
     env
 end
 
-MultiCarRacingEnv{T}(; kwargs...) where {T} = MultiCarRacingEnv(; T = T, kwargs...)
+MultiCarRacingEnv{T}(; kwargs...) where {T} = MultiCarRacingEnv(; T=T, kwargs...)
 
 # Might not want to have the same seed for every envrionment here
 function Random.seed!(env::MultiCarRacingEnv, seed)
@@ -97,8 +97,8 @@ RLBase.state(env::MultiCarRacingEnv) = env.state
 function _update_states_env2envs(env::MultiCarRacingEnv)
     for (idx, en) in enumerate(env.envs)
         ss_size = length(RLBase.state_space(en))
-        start_idx = ss_size*(idx-1) + 1
-        end_idx = ss_size*idx
+        start_idx = ss_size * (idx - 1) + 1
+        end_idx = ss_size * idx
         en.state = env.state[start_idx:end_idx]
     end
 end
@@ -106,14 +106,14 @@ end
 function _update_states_envs2env(env::MultiCarRacingEnv)
     for (idx, en) in enumerate(env.envs)
         ss_size = length(RLBase.state_space(en))
-        start_idx = ss_size*(idx-1) + 1
-        end_idx = ss_size*idx
+        start_idx = ss_size * (idx - 1) + 1
+        end_idx = ss_size * idx
         env.state[start_idx:end_idx] = en.state
     end
 end
 
 function within_track(env::MultiCarRacingEnv)
-    within = true   
+    within = true
     for en in env.envs
         within = within && within_track(en).within
     end
@@ -135,7 +135,7 @@ end
     - Collision (≤ 4m): -7000
     - Penalize distance away by the distance amount
 """
-function RLBase.reward(env::MultiCarRacingEnv{T}) where {T} 
+function RLBase.reward(env::MultiCarRacingEnv{T}) where {T}
     rew = 0.0
     for (ii, en) in enumerate(env.envs)
         rew += reward(en)
@@ -152,15 +152,15 @@ end
 
 function RLBase.reset!(env::MultiCarRacingEnv{A,T}) where {A,T}
     ss_size = length(env.state)
-    ind_ss_size = round(Int, length(env.state)/env.N)
+    ind_ss_size = round(Int, length(env.state) / env.N)
     env.envs[1].state = zeros(T, ind_ss_size)
     env.envs[1].state[3] = deg2rad(90)
     env.envs[1].state[4] = 10.0
     for ii ∈ 2:env.N
-        if mod(ii,2) == 0 
-            env.envs[ii].state[1] = ii/2*5.0
+        if mod(ii, 2) == 0
+            env.envs[ii].state[1] = ii / 2 * 5.0
         else
-            env.envs[ii].state[1] = (1-ii)/2*5.0
+            env.envs[ii].state[1] = (1 - ii) / 2 * 5.0
         end
         env.envs[ii].state[3] = deg2rad(90)
         env.envs[ii].state[4] = 10.0

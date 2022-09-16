@@ -68,30 +68,30 @@ end
 - `rng = Random.GLOBAL_RNG`
 """
 function CarRacingEnv(;
-    T = Float64,
-    m = 2000.0, 			
-    I_zz = 3764.0, 			
-    h_cm = 0.3,	 			
-    l_f = 1.53, 			
-    l_r = 1.23, 			
-    C_D0 = 241, 			
-    C_D1 = 25.1, 			
-    C_αf = 150000.0, 		
-    C_αr = 280000.0, 		
-    μ_f = 0.9, 				
-    μ_r = 0.9, 				
-    δ_max = deg2rad(18),	
-    δ_dot_max = deg2rad(90),	
-    Fx_max = 7200.0,  
-    Fx_min = 22500.0,         
-    λ_brake = 0.6,          
-    λ_drive = 0.0,         
-    dt = 0.1,
-    δt = 0.01,
-    β_limit = deg2rad(45),
-    track = string(@__DIR__, "/car_racing_tracks/curve.csv"),
-    track_sample_factor = 20,
-    rng = Random.GLOBAL_RNG,
+    T=Float64,
+    m=2000.0,
+    I_zz=3764.0,
+    h_cm=0.3,
+    l_f=1.53,
+    l_r=1.23,
+    C_D0=241,
+    C_D1=25.1,
+    C_αf=150000.0,
+    C_αr=280000.0,
+    μ_f=0.9,
+    μ_r=0.9,
+    δ_max=deg2rad(18),
+    δ_dot_max=deg2rad(90),
+    Fx_max=7200.0,
+    Fx_min=22500.0,
+    λ_brake=0.6,
+    λ_drive=0.0,
+    dt=0.1,
+    δt=0.01,
+    β_limit=deg2rad(45),
+    track=string(@__DIR__, "/car_racing_tracks/curve.csv"),
+    track_sample_factor=20,
+    rng=Random.GLOBAL_RNG
 )
     params = CarRacingEnvParams{T}(
         m,
@@ -128,47 +128,47 @@ end
 """
 function CarRacingEnv(
     params::CarRacingEnvParams;
-    T = Float64,
-    dt = 0.1,
-    δt = 0.01,
-    track = string(@__DIR__, "/car_racing_tracks/curve.csv"),
-    track_sample_factor = 10,
-    rng = Random.GLOBAL_RNG,
+    T=Float64,
+    dt=0.1,
+    δt=0.01,
+    track=string(@__DIR__, "/car_racing_tracks/curve.csv"),
+    track_sample_factor=10,
+    rng=Random.GLOBAL_RNG
 )
 
     action_space = ClosedInterval{Vector{T}}(
-        [-1.0, -1.0], 
-        [ 1.0,  1.0],
-        )
+        [-1.0, -1.0],
+        [1.0, 1.0],
+    )
     observation_space = Space([
-        -Inf..Inf,                          # X position in XY plane (x = north, y = west)
-        -Inf..Inf,                          # Y position in XY plane (x = north, y = west)
-        -π..π,                              # yaw (rotation from x axis toward y axis [north to west])
-        -Inf..Inf,                          # Longitudinal velocity
-        -Inf..Inf,                          # Lateral velocity
-        -Inf..Inf,                          # yaw rate
-        -params.δ_max..params.δ_max,        # steering angle
-        -1.0..1.0,                          # acceleration/brake amount [-1, 1]
-        ])
-        
+        -Inf .. Inf,                          # X position in XY plane (x = north, y = west)
+        -Inf .. Inf,                          # Y position in XY plane (x = north, y = west)
+        -π .. π,                              # yaw (rotation from x axis toward y axis [north to west])
+        -Inf .. Inf,                          # Longitudinal velocity
+        -Inf .. Inf,                          # Lateral velocity
+        -Inf .. Inf,                          # yaw rate
+        -params.δ_max .. params.δ_max,        # steering angle
+        -1.0 .. 1.0,                          # acceleration/brake amount [-1, 1]
+    ])
+
     env = CarRacingEnv(
-        params, 
-        action_space, 
-        observation_space, 
-        zeros(T,8),
-        false, 
+        params,
+        action_space,
+        observation_space,
+        zeros(T, 8),
+        false,
         0,
         dt,
         δt,
         Track(track, sample_factor=track_sample_factor),
         rng,
-        )
+    )
 
     reset!(env)
     env
 end
 
-CarRacingEnv{T}(; kwargs...) where {T} = CarRacingEnv(; T = T, kwargs...)
+CarRacingEnv{T}(; kwargs...) where {T} = CarRacingEnv(; T=T, kwargs...)
 
 Random.seed!(env::CarRacingEnv, seed) = Random.seed!(env.rng, seed)
 
@@ -193,14 +193,14 @@ end
 """
     reward(env::CarRacingEnv)
 
-    - Reward for going fast, penalty for boundary violation, 
+    - Reward for going fast, penalty for boundary violation,
         excess β and distance from center of track
     - Boundary violation    : -1000000
     - Excessive β           :  -5000
-    - Distance from center  : -(x² + y²)^(1/2) 
+    - Distance from center  : -(x² + y²)^(1/2)
     - Speed                 : +2.0 * (Vx² + Vy²)^(1/2)
 """
-function RLBase.reward(env::CarRacingEnv{T}) where {T} 
+function RLBase.reward(env::CarRacingEnv{T}) where {T}
     rew = 0.0
     within_tuple = within_track(env)
     if !within_tuple.within
@@ -210,7 +210,7 @@ function RLBase.reward(env::CarRacingEnv{T}) where {T}
         rew += -5000.0
     end
     rew += -within_tuple.dist
-    rew += 2.0*norm(env.state[4:5])
+    rew += 2.0 * norm(env.state[4:5])
     return rew
 end
 
@@ -255,7 +255,7 @@ function calc_tire_fy(α, μ, C_α, fzt, fxt)
     fy_max = sqrt(max((μ * fzt)^2 - fxt^2, 1e-8))
     ta = tan(α)
     if abs(α) < atan(3 * fy_max / C_α)
-        return -C_α*ta + (C_α^2/(3*fy_max))*abs(ta)*ta - ((C_α^3)/(27*fy_max^2))*ta^3
+        return -C_α * ta + (C_α^2 / (3 * fy_max)) * abs(ta) * ta - ((C_α^3) / (27 * fy_max^2)) * ta^3
     else
         return -fy_max * sign(α)
     end
@@ -274,14 +274,14 @@ function calc_tire_fz(params::CarRacingEnvParams, fx, tire::Char)
 end
 
 """
-Planar single-track model with tire forces coming from a 
+Planar single-track model with tire forces coming from a
 single-friction-coefficient brush tire model.
 
-M. Brown and J. C. Gerdes, Coordinating Tire Forces to Avoid Obstacles Using 
-Nonlinear Model Predictive Control, in IEEE Transactions on Intelligent 
+M. Brown and J. C. Gerdes, Coordinating Tire Forces to Avoid Obstacles Using
+Nonlinear Model Predictive Control, in IEEE Transactions on Intelligent
 Vehicles, vol. 5, no. 1, pp. 21-31, March 2020, doi: 10.1109/TIV.2019.2955362.
 """
-function _step!(env::CarRacingEnv, a::Vector{Float64})   
+function _step!(env::CarRacingEnv, a::Vector{Float64})
     env.t += 1
     x = env.state[1]
     y = env.state[2]
@@ -293,22 +293,22 @@ function _step!(env::CarRacingEnv, a::Vector{Float64})
 
     dt = env.dt
     δt = env.δt
-    
-    commanded_Δδ_rate = abs(a[1]*env.params.δ_max - δ) / dt # Commanded turn rate
-    Δδ_rate = min(commanded_Δδ_rate, env.params.δ_dot_max) * sign(a[1]*env.params.δ_max - δ)
+
+    commanded_Δδ_rate = abs(a[1] * env.params.δ_max - δ) / dt # Commanded turn rate
+    Δδ_rate = min(commanded_Δδ_rate, env.params.δ_dot_max) * sign(a[1] * env.params.δ_max - δ)
     pedal = a[2] # Assume instant torque for accel or brake
 
-    integration_steps = round(Int, dt/δt)
+    integration_steps = round(Int, dt / δt)
     for _ in 1:integration_steps
         δ += Δδ_rate * δt
-        
+
         # Slip angles for the tires
-        α_f = atan((Vy + env.params.l_f*Ψ_dot) , Vx) - δ
-        α_r = atan((Vy - env.params.l_r*Ψ_dot) , Vx)
-        
+        α_f = atan((Vy + env.params.l_f * Ψ_dot), Vx) - δ
+        α_r = atan((Vy - env.params.l_r * Ψ_dot), Vx)
+
         # Simple drag
-        fx_aero = (env.params.C_D0 + env.params.C_D1*abs(Vx)) * sign(Vx)
-        
+        fx_aero = (env.params.C_D0 + env.params.C_D1 * abs(Vx)) * sign(Vx)
+
         accel = env.params.Fx_max * max(pedal, 0.0)
         brake = env.params.Fx_min * min(pedal, 0.0) * sign(Vx) # Opposite direction of long velocity
         fx = accel + brake
@@ -320,18 +320,18 @@ function _step!(env::CarRacingEnv, a::Vector{Float64})
         fzr = calc_tire_fz(env.params, fx, 'r')
         fyf = calc_tire_fy(α_f, env.params.μ_f, env.params.C_αf, fzf, fxf)
         fyr = calc_tire_fy(α_r, env.params.μ_r, env.params.C_αr, fzr, fxr)
-        
-        Ψ_ddot = (1/env.params.Izz) * (env.params.l_f * (fxf*sin(δ) + fyf*cos(δ))  - env.params.l_r*fyr)
-        Vy_dot = (1/env.params.m) * (fyf*cos(δ) + fxf*sin(δ) + fyr) - Ψ_dot*Vx
-        Vx_dot = (1/env.params.m) * (fxf*cos(δ) - fyf*sin(δ) + fxr - fx_aero) + Ψ_dot*Vy
+
+        Ψ_ddot = (1 / env.params.Izz) * (env.params.l_f * (fxf * sin(δ) + fyf * cos(δ)) - env.params.l_r * fyr)
+        Vy_dot = (1 / env.params.m) * (fyf * cos(δ) + fxf * sin(δ) + fyr) - Ψ_dot * Vx
+        Vx_dot = (1 / env.params.m) * (fxf * cos(δ) - fyf * sin(δ) + fxr - fx_aero) + Ψ_dot * Vy
 
         Ψ_dot += Ψ_ddot * δt                # Updated yaw rate
         Vx += Vx_dot * δt                   # Updated longitudinal velocity
         Vy += Vy_dot * δt                   # Updated lateral velocity
         Ψ += Ψ_dot * δt                     # Updated yaw (heading)
         Ψ = atan(sin(Ψ), cos(Ψ))
-        x += (Vx*cos(Ψ) - Vy*sin(Ψ)) * δt   # Updated x position yaw heading is counterclockwise, x is north, y is west
-        y += (Vx*sin(Ψ) + Vy*cos(Ψ)) * δt   # Updated y position yaw is counterclockwise, x is north, y is west
+        x += (Vx * cos(Ψ) - Vy * sin(Ψ)) * δt   # Updated x position yaw heading is counterclockwise, x is north, y is west
+        y += (Vx * sin(Ψ) + Vy * cos(Ψ)) * δt   # Updated y position yaw is counterclockwise, x is north, y is west
     end
 
     env.state[1] = x
@@ -344,4 +344,3 @@ function _step!(env::CarRacingEnv, a::Vector{Float64})
     env.state[8] = pedal
     return env
 end
-

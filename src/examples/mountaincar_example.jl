@@ -11,21 +11,21 @@ function (env::MountainCarEnv{<:Base.OneTo{Int}})(a::Vector)
 end
 
 # Modified MountainCar reward function
-function RLBase.reward(env::MountainCarEnv{A,T}) where {A,T} 
+function RLBase.reward(env::MountainCarEnv{A,T}) where {A,T}
     rew = 0.0
-    
-    if env.state[1] >= env.params.goal_pos && 
-        env.state[2] >= env.params.goal_velocity
+
+    if env.state[1] >= env.params.goal_pos &&
+       env.state[2] >= env.params.goal_velocity
         rew += 100000
     end
-    
+
     rew += abs(env.state[2])
     rew += env.done ? 0.0 : -1.0
 
     return rew
 end
 
-""" 
+"""
 simulate_mountaincar(; kwargs...)
     Simulate the mountaincar envrionment
 kwargs:
@@ -51,26 +51,26 @@ kwargs:
  - save_gif = false,                                 # Save gif
 """
 function simulate_mountaincar(;
-    num_trials = 1,
-    num_steps = 200,
-    policy_type = :cemppi,
-    num_samples = 20, 
-    horizon = 15,
-    λ = 0.1,
-    α = 1.0,
-    U₀ = [0.0],
-    cov_mat = [1.5],
-    ais_its = 5,
-    λ_ais = 0.1,
-    ce_elite_threshold = 0.8,
-    ce_Σ_est = :mle,
-    cma_σ = 0.75,
-    cma_elite_threshold = 0.8,
-    seed = Int(rand(1:10e10)),
-    log_runs = true,
-    plot_steps = false,
-    pol_log = false,
-    save_gif = false,
+    num_trials=1,
+    num_steps=200,
+    policy_type=:cemppi,
+    num_samples=20,
+    horizon=15,
+    λ=0.1,
+    α=1.0,
+    U₀=[0.0],
+    cov_mat=[1.5],
+    ais_its=5,
+    λ_ais=0.1,
+    ce_elite_threshold=0.8,
+    ce_Σ_est=:mle,
+    cma_σ=0.75,
+    cma_elite_threshold=0.8,
+    seed=Int(rand(1:10e10)),
+    log_runs=true,
+    plot_steps=false,
+    pol_log=false,
+    save_gif=false
 )
 
     sim_type = "MountainCar"
@@ -79,7 +79,7 @@ function simulate_mountaincar(;
     @printf("%-30s%s\n", "Sim Type:", sim_type)
     @printf("%-30s%d\n", "Num Trails:", num_trials)
     @printf("%-30s%d\n", "Num Steps:", num_steps)
-    @printf("%-30s%s\n","Policy Type:", policy_type)
+    @printf("%-30s%s\n", "Policy Type:", policy_type)
     @printf("%-30s%d\n", "Num samples", num_samples)
     @printf("%-30s%d\n", "Horizon", horizon)
     @printf("%-30s%.2f\n", "λ (inverse temp):", λ)
@@ -97,10 +97,10 @@ function simulate_mountaincar(;
         end
     end
     @printf("%-30s[%.4f, ..., %.4f]\n", "U₀", U₀[1], U₀[end])
-    @printf("%-30s[%.4f]\n", "Σ", cov_mat[1,1])
+    @printf("%-30s[%.4f]\n", "Σ", cov_mat[1, 1])
     @printf("%-30s%d\n", "Seed:", seed)
     @printf("\n")
-    
+
     gif_name = "$sim_type-$policy_type-$num_samples-$horizon-$λ-$α-"
     if policy_type != :mppi && policy_type != :gmppi
         gif_name = gif_name * "$ais_its-"
@@ -120,7 +120,7 @@ function simulate_mountaincar(;
     rews = zeros(Float64, num_trials)
     steps = zeros(Float64, num_trials)
     rews_per_step = zeros(Float64, num_trials)
-    exec_times = zeros(Float64, num_trials)  
+    exec_times = zeros(Float64, num_trials)
 
     @printf("Trial    #: %12s : %7s: %12s", "Reward", "Steps", "Reward/Step")
     @printf(" : %7s", "Ex Time")
@@ -130,11 +130,11 @@ function simulate_mountaincar(;
         env = MountainCarEnv(continuous=true, rng=MersenneTwister())
         pol = get_policy(
             policy_type,
-            env,num_samples, horizon, λ, α, U₀, cov_mat, pol_log, 
-            ais_its, 
-            λ_ais, 
+            env, num_samples, horizon, λ, α, U₀, cov_mat, pol_log,
+            ais_its,
+            λ_ais,
             ce_elite_threshold, ce_Σ_est,
-            cma_σ, cma_elite_threshold,  
+            cma_σ, cma_elite_threshold,
         )
 
         seed!(env, seed + k)
@@ -142,7 +142,7 @@ function simulate_mountaincar(;
 
         # Start timer
         time_start = Dates.now()
-        
+
         rew, cnt = 0, 0
         # Main simulation loop
         while !env.done && cnt <= num_steps
@@ -158,22 +158,26 @@ function simulate_mountaincar(;
             # Plot or collect the plot for the animation
             if plot_steps || save_gif
                 p = plot(env)
-                if save_gif frame(anim) end
-                if plot_steps display(p) end
+                if save_gif
+                    frame(anim)
+                end
+                if plot_steps
+                    display(p)
+                end
             end
         end
-        
+
         # Stop timer
         time_end = Dates.now()
         seconds_ran = Dates.value(time_end - time_start) / 1000
 
         rews[k] = rew
-        steps[k] = cnt-1
-        rews_per_step[k] = rews[k]/steps[k]
-        exec_times[k] = seconds_ran 
+        steps[k] = cnt - 1
+        rews_per_step[k] = rews[k] / steps[k]
+        exec_times[k] = seconds_ran
 
         if log_runs
-            @printf("Trial %4d: %12.2f : %7d: %12.2f", k, rew, cnt-1, rew/(cnt-1))
+            @printf("Trial %4d: %12.2f : %7d: %12.2f", k, rew, cnt - 1, rew / (cnt - 1))
             @printf(" : %7.2f", seconds_ran)
             @printf("\n")
         end
@@ -182,19 +186,19 @@ function simulate_mountaincar(;
     # Output summary results
     @printf("-----------------------------------\n")
     @printf("Trials %3s: %12.2f : %7.2f: %12.2f", "AVE", mean(rews), mean(steps), mean(rews_per_step))
-    @printf(" : %7.2f\n", mean(exec_times))    
+    @printf(" : %7.2f\n", mean(exec_times))
     @printf("Trials %3s: %12.2f : %7.2f: %12.2f", "STD", std(rews), std(steps), std(rews_per_step))
     @printf(" : %7.2f\n", std(exec_times))
-    @printf("Trials %3s: %12.2f : %7.2f: %12.2f", "MED", 
+    @printf("Trials %3s: %12.2f : %7.2f: %12.2f", "MED",
         quantile_ci(rews)[2], quantile_ci(steps)[2], quantile_ci(rews_per_step)[2])
     @printf(" : %7.2f\n", quantile_ci(exec_times)[2])
-    @printf("Trials %3s: %12.2f : %7.2f: %12.2f", "L95", 
+    @printf("Trials %3s: %12.2f : %7.2f: %12.2f", "L95",
         quantile_ci(rews)[1], quantile_ci(steps)[1], quantile_ci(rews_per_step)[1])
     @printf(" : %7.2f\n", quantile_ci(exec_times)[1])
-    @printf("Trials %3s: %12.2f : %7.2f: %12.2f", "U95", 
+    @printf("Trials %3s: %12.2f : %7.2f: %12.2f", "U95",
         quantile_ci(rews)[3], quantile_ci(steps)[3], quantile_ci(rews_per_step)[3])
     @printf(" : %7.2f\n", quantile_ci(exec_times)[3])
-    @printf("Trials %3s: %12.2f : %7.2f: %12.2f", "MIN", 
+    @printf("Trials %3s: %12.2f : %7.2f: %12.2f", "MIN",
         minimum(rews), minimum(steps), minimum(rews_per_step))
     @printf(" : %7.2f\n", minimum(exec_times))
     @printf("Trials %3s: %12.2f : %7.2f: %12.2f", "MAX", maximum(rews), maximum(steps), maximum(rews_per_step))
@@ -205,4 +209,3 @@ function simulate_mountaincar(;
         gif(anim, gif_name, fps=10)
     end
 end
-

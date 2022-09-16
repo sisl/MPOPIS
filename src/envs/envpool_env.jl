@@ -1,6 +1,5 @@
 using PyCall
 
-
 mutable struct EnvpoolEnv{A,T,R<:AbstractRNG} <: AbstractEnv
     task::String
     py_env::PyObject
@@ -16,21 +15,6 @@ mutable struct EnvpoolEnv{A,T,R<:AbstractRNG} <: AbstractEnv
     acts::Vector{Vector{T}}
     rng::R
 end
-# mutable struct EnvpoolEnv{A,T,R<:AbstractRNG} <: AbstractEnv
-#     const task::String
-#     py_env::PyObject
-#     const action_space::A
-#     const observation_space::Space{Vector{ClosedInterval{T}}}
-#     const num_states::Int
-#     const num_envs::Int
-#     info::Dict
-#     rews::Vector{T}
-#     state::Matrix{T}
-#     done::Bool
-#     t::Int
-#     acts::Vector{Vector{T}}
-#     rng::R
-# end
 
 """
 EnvpoolEnv(task ;kwargs...)
@@ -39,12 +23,12 @@ EnvpoolEnv(task ;kwargs...)
 
 """
 function EnvpoolEnv(
-    task = "Swimmer-v4";
-    T = Float64,
-    num_envs = 100,
-    frame_skip = 10,
-    random_seed = 42,
-    rng = Random.GLOBAL_RNG,
+    task="Swimmer-v4";
+    T=Float64,
+    num_envs=100,
+    frame_skip=10,
+    random_seed=42,
+    rng=Random.GLOBAL_RNG
 )
 
     py"""
@@ -87,7 +71,7 @@ function EnvpoolEnv(
     py_obs_low = py_observation_space.low
     py_obs_high = py_observation_space.high
 
-    observation_vec = [py_obs_low[ii]..py_obs_high[ii] for ii in 1:py_obs_len]
+    observation_vec = [py_obs_low[ii] .. py_obs_high[ii] for ii in 1:py_obs_len]
     observation_space = Space(observation_vec)
 
     env = EnvpoolEnv(
@@ -111,7 +95,6 @@ function EnvpoolEnv(
 end
 
 Random.seed!(env::EnvpoolEnv, seed) = Random.seed!(env.rng, seed)
-
 RLBase.action_space(env::EnvpoolEnv) = env.action_space
 RLBase.state_space(env::EnvpoolEnv) = env.observation_space
 RLBase.is_terminated(env::EnvpoolEnv) = env.done

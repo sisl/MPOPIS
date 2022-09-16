@@ -1,30 +1,18 @@
 function simulate_envpool_env(
     env_name;
-    frame_skip = 10,
-
-    num_trials = 1,
-    num_steps = 200,
-
-    policy_type = :cemppi,
-    num_samples = 150,
-    horizon = 50,
-    λ = 1.0,
-    α = 1.0,
-
-    U₀ = [],
-    cov_mat = [],
-
-    ais_its = 10,
-    λ_ais = 20.0,
-    ce_elite_threshold = 0.8,
-    ce_Σ_est = :ss,
-    cma_σ = 0.75,
-    cma_elite_threshold = 0.8,
-
-    seed = Int(rand(1:10e10)),
-
-    log_runs = true,
-    pol_log = false,
+    frame_skip=10, num_trials=1,
+    num_steps=200, policy_type=:cemppi,
+    num_samples=150,
+    horizon=50,
+    λ=1.0,
+    α=1.0, U₀=[],
+    cov_mat=[], ais_its=10,
+    λ_ais=20.0,
+    ce_elite_threshold=0.8,
+    ce_Σ_est=:ss,
+    cma_σ=0.75,
+    cma_elite_threshold=0.8, seed=Int(rand(1:10e10)), log_runs=true,
+    pol_log=false
 )
 
     env = EnvpoolEnv(env_name; num_envs=1)
@@ -33,13 +21,13 @@ function simulate_envpool_env(
         U₀ = zeros(as)
     end
     if isempty(cov_mat)
-        cov_mat = Matrix(I(as)*0.5)
+        cov_mat = Matrix(I(as) * 0.5)
     end
 
     io_stream = nothing
     if log_runs
         fname = "$(env_name)_$(frame_skip)_$(policy_type)_$(num_steps)_$(num_trials)" *
-            "_$(seed)_$(horizon)_$(λ)_$(α)_$(U₀[1])_$(cov_mat[1,1])_$(num_samples)"
+                "_$(seed)_$(horizon)_$(λ)_$(α)_$(U₀[1])_$(cov_mat[1,1])_$(num_samples)"
         if policy_type != :mppi && policy_type != :gmppi
             fname = fname * "_$(ais_its)"
         end
@@ -60,7 +48,7 @@ function simulate_envpool_env(
     @printf("%-30s%s\n", "Env Name:", env_name)
     @printf("%-30s%d\n", "Num Trails:", num_trials)
     @printf("%-30s%d\n", "Num Steps:", num_steps)
-    @printf("%-30s%s\n","Policy Type:", policy_type)
+    @printf("%-30s%s\n", "Policy Type:", policy_type)
     @printf("%-30s%d\n", "Num samples", num_samples)
     @printf("%-30s%d\n", "Horizon", horizon)
     @printf("%-30s%.2f\n", "λ (inverse temp):", λ)
@@ -95,7 +83,7 @@ function simulate_envpool_env(
         @printf(io_stream, "%-30s%s\n", "Env Name:", env_name)
         @printf(io_stream, "%-30s%d\n", "Num Trails:", num_trials)
         @printf(io_stream, "%-30s%d\n", "Num Steps:", num_steps)
-        @printf(io_stream, "%-30s%s\n","Policy Type:", policy_type)
+        @printf(io_stream, "%-30s%s\n", "Policy Type:", policy_type)
         @printf(io_stream, "%-30s%d\n", "Num samples", num_samples)
         @printf(io_stream, "%-30s%d\n", "Horizon", horizon)
         @printf(io_stream, "%-30s%.2f\n", "λ (inverse temp):", λ)
@@ -187,8 +175,8 @@ function simulate_envpool_env(
         seconds_ran = Dates.value(time_end - time_start) / 1000
 
         rews[k] = rew
-        steps[k] = cnt-1
-        rews_per_step[k] = rews[k]/steps[k]
+        steps[k] = cnt - 1
+        rews_per_step[k] = rews[k] / steps[k]
         exec_times[k] = seconds_ran
 
         # For clearing the progress bar
@@ -200,12 +188,12 @@ function simulate_envpool_env(
             print("\e[1G") # move cursor to column 1
         end
 
-        @printf("Trial %4d: %12.2f : %7d: %12.2f", k, rew, cnt-1, rew/(cnt-1))
+        @printf("Trial %4d: %12.2f : %7d: %12.2f", k, rew, cnt - 1, rew / (cnt - 1))
         @printf(" : %7.2f", seconds_ran)
         @printf("\n")
         if log_runs
             io_stream = open(fname, "a")
-            @printf(io_stream, "Trial %4d: %12.2f : %7d: %12.2f", k, rew, cnt-1, rew/(cnt-1))
+            @printf(io_stream, "Trial %4d: %12.2f : %7d: %12.2f", k, rew, cnt - 1, rew / (cnt - 1))
             @printf(io_stream, " : %7.2f", seconds_ran)
             @printf(io_stream, "\n")
             close(io_stream)
