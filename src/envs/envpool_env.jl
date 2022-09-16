@@ -179,6 +179,7 @@ function _restore_using_acts!(env::EnvpoolEnv)
     return env
 end
 
+
 function install_mujoco_requirements()
     run(`$(PyCall.python) -m pip install envpool`)
 end
