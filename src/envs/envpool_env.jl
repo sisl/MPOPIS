@@ -20,6 +20,7 @@ end
 EnvpoolEnv(task ;kwargs...)
 
 # Keyword arguments
+seed=42,
 - `task::String = "Swimmer-v4",  # EnvPool task name`
 - `T = Float64,`
 - `num_envs::Int = 100,          # Number of environments`
@@ -178,6 +179,7 @@ function _restore_using_acts!(env::EnvpoolEnv)
     env.t = Int(env_data[end]["elapsed_step"][1])
     return env
 end
+
 
 function install_mujoco_requirements()
     run(`$(PyCall.python) -m pip install envpool`)
