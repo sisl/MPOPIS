@@ -34,16 +34,16 @@ kwargs:
     - log::Bool = false,
 """
 function MPPI_Policy_Params(env::AbstractEnv, type::Symbol;
-    num_samples::Int = 50,
-    horizon::Int = 50,
-    λ::Float64 = 1.0,
-    α::Float64 = 1.0,
-    U₀::Vector{Float64} = [0.0],
-    cov_mat::Union{Matrix{Float64},Vector{Float64}} = [1.0],
-    weight_method::Symbol = :IT,
-    elite_threshold::Float64 = 0.8,
-    rng::AbstractRNG = Random.GLOBAL_RNG,
-    log::Bool = false,
+    num_samples::Int=50,
+    horizon::Int=50,
+    λ::Float64=1.0,
+    α::Float64=1.0,
+    U₀::Vector{Float64}=[0.0],
+    cov_mat::Union{Matrix{Float64},Vector{Float64}}=[1.0],
+    weight_method::Symbol=:IT,
+    elite_threshold::Float64=0.8,
+    rng::AbstractRNG=Random.GLOBAL_RNG,
+    log::Bool=false
 )
 
     # State space size
@@ -83,7 +83,7 @@ function MPPI_Policy_Params(env::AbstractEnv, type::Symbol;
     if weight_method == :IT
         weight_m = Information_Theoretic(λ)
     elseif cost_method == :CE
-        n = round(Int, num_samples*(1-elite_threshold))
+        n = round(Int, num_samples * (1 - elite_threshold))
         weight_m = Cross_Entropy(elite_threshold, n)
     else
         error("No cost method implemented for $weight_method")
@@ -131,7 +131,7 @@ function (pol::MPPI_Policy)(env::AbstractEnv)
     weighted_noise = zeros(Float64, cs)
     for t ∈ 1:T
         for k ∈ 1:K
-            weighted_noise[((t-1)*as+1):(t*as)] += weights[k] .* E[k,t]
+            weighted_noise[((t-1)*as+1):(t*as)] += weights[k] .* E[k, t]
         end
     end
     weighted_controls = pol.U + weighted_noise
@@ -148,7 +148,7 @@ end
 function calculate_trajectory_costs(pol::MPPI_Policy, env::EnvpoolEnv)
     K, T = pol.params.num_samples, pol.params.horizon
     as = pol.params.as
-    γ = pol.params.λ*(1-pol.params.α)
+    γ = pol.params.λ * (1 - pol.params.α)
 
     # Get samples for which our trajectories will be defined
     P = Distributions.MvNormal(pol.Σ)
@@ -186,7 +186,7 @@ end
 function calculate_trajectory_costs(pol::MPPI_Policy, env::AbstractEnv)
     K, T = pol.params.num_samples, pol.params.horizon
     as = pol.params.as
-    γ = pol.params.λ*(1-pol.params.α)
+    γ = pol.params.λ * (1 - pol.params.α)
 
     # Get samples for which our trajectories will be defined
     P = Distributions.MvNormal(pol.Σ)
@@ -198,10 +198,10 @@ function calculate_trajectory_costs(pol::MPPI_Policy, env::AbstractEnv)
     for k ∈ 1:K
         sim_env = copy(env) # Slower, but allows for multi threading
         for t ∈ 1:T
-            Eᵢ = E[k,t]
+            Eᵢ = E[k, t]
             uₜ = pol.U[((t-1)*as+1):(t*as)]
             Vₜ = uₜ + Eᵢ
-            control_cost = γ * uₜ'*Σ_inv*Eᵢ
+            control_cost = γ * uₜ' * Σ_inv * Eᵢ
             model_controls = get_model_controls(action_space(sim_env), Vₜ)
             sim_env(model_controls)
             # Subtrating based on "reward", Adding based on "cost"
@@ -225,7 +225,7 @@ function (pol::AbstractGMPPI_Policy)(env::AbstractEnv)
     # Weight the noise based on the calcualted weights
     weighted_noise = zeros(Float64, cs)
     for rᵢ ∈ 1:cs
-        weighted_noise[rᵢ] = weights' * E[rᵢ,:]
+        weighted_noise[rᵢ] = weights' * E[rᵢ, :]
     end
     weighted_controls = pol.U + weighted_noise
     control = get_controls_roll_U!(pol, weighted_controls)
@@ -242,13 +242,13 @@ function simulate_model(pol::AbstractGMPPI_Policy, env::EnvpoolEnv,
 )
     K, T = pol.params.num_samples, pol.params.horizon
     as = pol.params.as
-    γ = pol.params.λ*(1-pol.params.α)
+    γ = pol.params.λ * (1 - pol.params.α)
 
     trajectory_cost = zeros(Float64, K)
 
-    control_costs = [γ * U_orig'*Σ_inv*(pol.U + E[:,k] .- U_orig) for k in 1:K]
+    control_costs = [γ * U_orig' * Σ_inv * (pol.U + E[:, k] .- U_orig) for k in 1:K]
 
-        # Vₖ = pol.U + E[:,k]
+    # Vₖ = pol.U + E[:,k]
     Vₖ = repeat(pol.U', K) + E'
 
     model_controls = get_model_controls(action_space(env), Vₖ, T)
@@ -263,13 +263,13 @@ function simulate_model(pol::AbstractGMPPI_Policy, env::AbstractEnv,
 )
     K, T = pol.params.num_samples, pol.params.horizon
     as = pol.params.as
-    γ = pol.params.λ*(1-pol.params.α)
+    γ = pol.params.λ * (1 - pol.params.α)
 
     trajectory_cost = zeros(Float64, K)
     Threads.@threads for k ∈ 1:K
         sim_env = copy(env) # Slower, but allows for multi threading
-        Vₖ = pol.U + E[:,k]
-        control_cost = γ * U_orig'*Σ_inv*(Vₖ .- U_orig)
+        Vₖ = pol.U + E[:, k]
+        control_cost = γ * U_orig' * Σ_inv * (Vₖ .- U_orig)
         model_controls = get_model_controls(action_space(sim_env), Vₖ, T)
         trajectory_cost[k] = rollout_model(sim_env, T, model_controls, pol, k)
         trajectory_cost[k] += control_cost  # Adding based on "cost"
@@ -325,7 +325,7 @@ mutable struct CEMPPI_Policy{R<:AbstractRNG} <: AbstractGMPPI_Policy
     Σ::Matrix{Float64}
     opt_its::Int
     ce_elite_threshold::Float64
-    Σ_estimation_method::Union{LinearShrinkage, SimpleCovariance}
+    Σ_estimation_method::Union{LinearShrinkage,SimpleCovariance}
     rng::R
     logger::MPPI_Logger
 end
@@ -347,15 +347,15 @@ Options for Σ_est
 https://mateuszbaran.github.io/CovarianceEstimation.jl/dev/man/lshrink/
 """
 function CEMPPI_Policy(env::AbstractEnv;
-    opt_its::Int = 10,
-    ce_elite_threshold::Float64 = 0.8,
-    Σ_est::Symbol = :mle,
+    opt_its::Int=10,
+    ce_elite_threshold::Float64=0.8,
+    Σ_est::Symbol=:mle,
     kwargs...
 )
     params, U₀, Σ, rng, mppi_logger = MPPI_Policy_Params(env, :gmppi; kwargs...)
     if Σ_est == :mle
         Σ_est_method = SimpleCovariance()
-    elseif  Σ_est == :lw
+    elseif Σ_est == :lw
         Σ_est_method = LinearShrinkage(DiagonalUnequalVariance(), :lw)
     elseif Σ_est == :ss
         Σ_est_method = LinearShrinkage(DiagonalUnequalVariance(), :ss)
@@ -367,16 +367,16 @@ function CEMPPI_Policy(env::AbstractEnv;
         error("CEMPPI_Policy - Not a valid Σ estimation method")
     end
     pol = CEMPPI_Policy(params, env, U₀,
-              Σ, opt_its, ce_elite_threshold,
-              Σ_est_method, rng, mppi_logger,
-          )
+        Σ, opt_its, ce_elite_threshold,
+        Σ_est_method, rng, mppi_logger,
+    )
     return pol
 end
 
 function calculate_trajectory_costs(pol::CEMPPI_Policy, env::AbstractEnv)
     K = pol.params.num_samples
     N = pol.opt_its
-    m_elite = round(Int, K*(1-pol.ce_elite_threshold))
+    m_elite = round(Int, K * (1 - pol.ce_elite_threshold))
 
     # Initial covariance of distribution
     U_orig = pol.U
@@ -402,12 +402,8 @@ function calculate_trajectory_costs(pol::CEMPPI_Policy, env::AbstractEnv)
                 break
             end
 
-            # (μ′, Σ′) = StatsBase.mean_and_cov(elite, 2)
-            # Σ′ = Σ′ + + 10e-9*I
-            # pol.U = pol.U + vec(μ′)
-
             # Transposing elite based on needed format (n x p)
-            Σ′ = cov(pol.Σ_estimation_method, elite') + 10e-9*I
+            Σ′ = cov(pol.Σ_estimation_method, elite') + 10e-9 * I
             pol.U = pol.U + vec(mean(elite, dims=2))
         end
     end
@@ -450,25 +446,25 @@ CMAMPPI_Policy(env::AbstractEnv;
 kwargs passed to MPPI_Policy_Params
 """
 function CMAMPPI_Policy(env::AbstractEnv;
-    opt_its::Int = 10,
-    σ::Float64 = 1.0,
-    elite_perc_threshold::Float64 = 0.8,
+    opt_its::Int=10,
+    σ::Float64=1.0,
+    elite_perc_threshold::Float64=0.8,
     kwargs...
 )
     params, U₀, Σ, rng, mppi_logger = MPPI_Policy_Params(env, :gmppi; kwargs...)
     m = params.num_samples
     n = params.cs
-    m_elite = round(Int, (1.0-elite_perc_threshold)*m)
-    ws = log((m+1)/2) .- log.(1:m)
+    m_elite = round(Int, (1.0 - elite_perc_threshold) * m)
+    ws = log((m + 1) / 2) .- log.(1:m)
     ws[1:m_elite] ./= sum(ws[1:m_elite])
-    μ_eff = 1 / sum(ws[1:m_elite].^2)
-    cσ = (μ_eff + 2)/(n + μ_eff + 5)
-    dσ = 1 + 2max(0, sqrt((μ_eff-1)/(n+1))-1) + cσ
-    cΣ = (4 + μ_eff/n)/(n + 4 + 2μ_eff/n)
-    c1 = 2/((n+1.3)^2 + μ_eff)
-    cμ = min(1-c1, 2*(μ_eff-2+1/μ_eff)/((n+2)^2 + μ_eff))
-    ws[m_elite+1:end] .*= -(1 + c1/cμ)/sum(ws[m_elite+1:end])
-    E = n^0.5*(1-1/(4n)+1/(21*n^2))
+    μ_eff = 1 / sum(ws[1:m_elite] .^ 2)
+    cσ = (μ_eff + 2) / (n + μ_eff + 5)
+    dσ = 1 + 2max(0, sqrt((μ_eff - 1) / (n + 1)) - 1) + cσ
+    cΣ = (4 + μ_eff / n) / (n + 4 + 2μ_eff / n)
+    c1 = 2 / ((n + 1.3)^2 + μ_eff)
+    cμ = min(1 - c1, 2 * (μ_eff - 2 + 1 / μ_eff) / ((n + 2)^2 + μ_eff))
+    ws[m_elite+1:end] .*= -(1 + c1 / cμ) / sum(ws[m_elite+1:end])
+    E = n^0.5 * (1 - 1 / (4n) + 1 / (21 * n^2))
 
     pol = CMAMPPI_Policy(params, env, U₀, Σ, opt_its, σ, m_elite,
         ws, μ_eff, cσ, dσ, cΣ, c1, cμ, E, rng, mppi_logger)
@@ -494,7 +490,7 @@ function calculate_trajectory_costs(pol::CMAMPPI_Policy, env::AbstractEnv)
     for n ∈ 1:N
         # Get samples for which our trajectories will be defined
         if N > 1
-            P = Distributions.MvNormal(σ^2*Σ)
+            P = Distributions.MvNormal(σ^2 * Σ)
         else
             P = Distributions.MvNormal(Σ)
         end
@@ -515,34 +511,34 @@ function calculate_trajectory_costs(pol::CMAMPPI_Policy, env::AbstractEnv)
             end
 
             # selection and mean update
-            δs = elite_E/σ
+            δs = elite_E / σ
             δw = zeros(Float64, cs)
             for rᵢ ∈ 1:cs
-                δw[rᵢ] = ws[1:m_elite]' * elite_E[rᵢ,:]
+                δw[rᵢ] = ws[1:m_elite]' * elite_E[rᵢ, :]
             end
-            pol.U += σ*δw
+            pol.U += σ * δw
 
             # step-size control
             C = Σ^-0.5
-            pσ = (1-cσ)*pσ + sqrt(cσ*(2-cσ)*μ_eff)*C*δw
-            σ *= exp(cσ/dσ * (norm(pσ)/E_cma - 1))
+            pσ = (1 - cσ) * pσ + sqrt(cσ * (2 - cσ) * μ_eff) * C * δw
+            σ *= exp(cσ / dσ * (norm(pσ) / E_cma - 1))
 
             # covariance adaptation
-            hσ = Int(norm(pσ)/sqrt(1-(1-cσ)^(2n)) < (1.4+2/(cs+1))*E_cma)
-            pΣ = (1-cΣ)*pΣ + hσ*sqrt(cΣ*(2-cΣ)*μ_eff)*δw
+            hσ = Int(norm(pσ) / sqrt(1 - (1 - cσ)^(2n)) < (1.4 + 2 / (cs + 1)) * E_cma)
+            pΣ = (1 - cΣ) * pΣ + hσ * sqrt(cΣ * (2 - cΣ) * μ_eff) * δw
 
             temp_sum = 0
             for ii in 1:K
                 if ws[ii] ≥ 0
                     w0 = ws[ii]
                 else
-                    w0 = n*ws[ii]/norm(C*δs[order[ii]])^2
+                    w0 = n * ws[ii] / norm(C * δs[order[ii]])^2
                 end
-                temp_sum += w0*δs[order[ii]]*δs[order[ii]]'
+                temp_sum += w0 * δs[order[ii]] * δs[order[ii]]'
             end
 
-            Σ = (1-c1-cμ)*Σ + c1*(pΣ*pΣ' + (1-hσ)*cΣ*(2-cΣ)*Σ) .+ cμ*temp_sum
-            Σ = triu(Σ)+triu(Σ,1)' # enforce symmetry
+            Σ = (1 - c1 - cμ) * Σ + c1 * (pΣ * pΣ' + (1 - hσ) * cΣ * (2 - cΣ) * Σ) .+ cμ * temp_sum
+            Σ = triu(Σ) + triu(Σ, 1)' # enforce symmetry
         end
     end
     E = E .+ (pol.U - U_orig)
@@ -574,8 +570,8 @@ end
 kwargs passed to MPPI_Policy_Params
 """
 function μAISMPPI_Policy(env::AbstractEnv;
-    opt_its::Int = 10,
-    λ_ais::Float64 = 20.0,
+    opt_its::Int=10,
+    λ_ais::Float64=20.0,
     kwargs...
 )
     params, U₀, Σ, rng, mppi_logger = MPPI_Policy_Params(env, :gmppi; kwargs...)
@@ -639,8 +635,8 @@ end
     kwargs passed to MPPI_Policy_Params
 """
 function μΣAISMPPI_Policy(env::AbstractEnv;
-    opt_its::Int = 10,
-    λ_ais::Float64 = 20.0,
+    opt_its::Int=10,
+    λ_ais::Float64=20.0,
     kwargs...
 )
     params, U₀, Σ, rng, mppi_logger = MPPI_Policy_Params(env, :gmppi; kwargs...)
@@ -676,7 +672,7 @@ function calculate_trajectory_costs(pol::μΣAISMPPI_Policy, env::AbstractEnv)
             ws = compute_weights(weight_method, trajectory_cost)
             pw = StatsBase.ProbabilityWeights(ws)
             (μ′, Σ′) = StatsBase.mean_and_cov(E, pw, 2)
-            Σ′ = Σ′ + + 10e-9*I
+            Σ′ = Σ′ + +10e-9 * I
             pol.U = pol.U + vec(μ′)
         else
             ws = compute_weights(pol.params.weight_method, trajectory_cost)
@@ -710,8 +706,8 @@ PMCMPPI_Policy(env::AbstractEnv;
 kwargs passed to MPPI_Policy_Params
 """
 function PMCMPPI_Policy(env::AbstractEnv;
-    opt_its::Int = 10,
-    λ_ais::Float64 = 20.0,
+    opt_its::Int=10,
+    λ_ais::Float64=20.0,
     kwargs...
 )
     params, U₀, Σ, rng, mppi_logger = MPPI_Policy_Params(env, :gmppi; kwargs...)
@@ -751,7 +747,7 @@ function calculate_trajectory_costs(pol::PMCMPPI_Policy, env::AbstractEnv)
             resample_idxs = rand(pol.rng, resample_cat_dist, K)
             E′ = E[:, resample_idxs]
             (μ′, Σ′) = StatsBase.mean_and_cov(E′, 2)
-            Σ′ = Σ′ + + 10e-9*I
+            Σ′ = Σ′ + +10e-9 * I
             pol.U = pol.U + vec(μ′)
         else
             ws = compute_weights(pol.params.weight_method, trajectory_cost)
@@ -786,8 +782,8 @@ NESMPPI_Policy(env::AbstractEnv;
 kwargs passed to MPPI_Policy_Params
 """
 function NESMPPI_Policy(env::AbstractEnv;
-    opt_its::Int = 10,
-    step_factor::Float64 = 0.01,
+    opt_its::Int=10,
+    step_factor::Float64=0.01,
     kwargs...
 )
     params, U₀, Σ, rng, mppi_logger = MPPI_Policy_Params(env, :gmppi; kwargs...)
@@ -823,13 +819,13 @@ function calculate_trajectory_costs(pol::NESMPPI_Policy, env::AbstractEnv)
             ∇μlog_p_x = zeros(Float64, size(pol.U))
             ∇Alog_p_x = zeros(Float64, size(pol.Σ))
             for k ∈ 1:K
-                ∇μlog_p_x .+= Σ_inv * E[:,k] .* trajectory_cost[k]
-                ∇Σlog_p_x = 1/2*Σ_inv*E[:,k]*E[:,k]'*Σ_inv - 1/2*Σ_inv
-                ∇Alog_p_x += A′*(∇Σlog_p_x + ∇Σlog_p_x') * trajectory_cost[k]
+                ∇μlog_p_x .+= Σ_inv * E[:, k] .* trajectory_cost[k]
+                ∇Σlog_p_x = 1 / 2 * Σ_inv * E[:, k] * E[:, k]' * Σ_inv - 1 / 2 * Σ_inv
+                ∇Alog_p_x += A′ * (∇Σlog_p_x + ∇Σlog_p_x') * trajectory_cost[k]
             end
-            A′ -= pol.step_factor/K .* ∇Alog_p_x ./ K
+            A′ -= pol.step_factor / K .* ∇Alog_p_x ./ K
             Σ′ = A′' * A′
-            pol.U -= pol.step_factor/K .* ∇μlog_p_x
+            pol.U -= pol.step_factor / K .* ∇μlog_p_x
         end
     end
     E = E .+ (pol.U - U_orig)
