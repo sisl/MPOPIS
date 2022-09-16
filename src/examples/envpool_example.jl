@@ -1,17 +1,22 @@
 function simulate_envpool_env(
     env_name;
-    frame_skip=10, num_trials=1,
-    num_steps=200, policy_type=:cemppi,
+    frame_skip=10,
+    num_trials=1,
+    num_steps=200,
+    policy_type=:cemppi,
     num_samples=150,
     horizon=50,
     λ=1.0,
     α=1.0, U₀=[],
-    cov_mat=[], ais_its=10,
+    cov_mat=[],
+    ais_its=10,
     λ_ais=20.0,
     ce_elite_threshold=0.8,
     ce_Σ_est=:ss,
     cma_σ=0.75,
-    cma_elite_threshold=0.8, seed=Int(rand(1:10e10)), log_runs=true,
+    cma_elite_threshold=0.8,
+    seed=Int(rand(1:10e10)),
+    log_runs=false,
     pol_log=false
 )
 
@@ -21,7 +26,7 @@ function simulate_envpool_env(
         U₀ = zeros(as)
     end
     if isempty(cov_mat)
-        cov_mat = Matrix(I(as) * 0.5)
+        cov_mat = Matrix(I(as) * 0.25)
     end
 
     io_stream = nothing
