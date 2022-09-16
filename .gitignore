@@ -1,4 +1,3 @@
 *.vscode
 Manifest.toml
-gifs/
-*.gif
+*.DS_Store
