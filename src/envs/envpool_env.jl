@@ -178,3 +178,7 @@ function _restore_using_acts!(env::EnvpoolEnv)
     env.t = Int(env_data[end]["elapsed_step"][1])
     return env
 end
+
+function install_mujoco_requirements()
+    run(`$(PyCall.python) -m pip install envpool`)
+end
