@@ -20,7 +20,6 @@ end
 EnvpoolEnv(task ;kwargs...)
 
 # Keyword arguments
-seed=42,
 - `task::String = "Swimmer-v4",  # EnvPool task name`
 - `T = Float64,`
 - `num_envs::Int = 100,          # Number of environments`
