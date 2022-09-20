@@ -44,7 +44,8 @@ export
     simulate_mountaincar,
     simulate_cartpole,
     simulate_envpool_env,
-    install_mujoco_requirements
+    install_mujoco_requirements,
+    create_mujoco_gif
 
 abstract type AbstractWeightMethod end
 abstract type AbstractPathIntegralPolicy end

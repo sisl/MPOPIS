@@ -179,7 +179,13 @@ function _restore_using_acts!(env::EnvpoolEnv)
     return env
 end
 
+function create_mujoco_gif(env::EnvpoolEnv)
+    @pyinclude("mujoco_gif.py")
+
+end
 
 function install_mujoco_requirements()
     run(`$(PyCall.python) -m pip install envpool`)
+    run(`$(PyCall.python) -m pip install gym`)
+    run(`$(PyCall.python) -m pip install imageio`)
 end
