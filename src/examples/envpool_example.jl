@@ -17,7 +17,8 @@ function simulate_envpool_env(
     cma_elite_threshold=0.8,
     seed=Int(rand(1:10e10)),
     log_runs=false,
-    pol_log=false
+    pol_log=false,
+    output_acts_file=false,
 )
 
     env = EnvpoolEnv(env_name; num_envs=1)
@@ -30,23 +31,24 @@ function simulate_envpool_env(
     end
 
     io_stream = nothing
+
+    fname = "$(env_name)_$(frame_skip)_$(policy_type)_$(num_steps)_$(num_trials)" *
+            "_$(seed)_$(horizon)_$(λ)_$(α)_$(U₀[1])_$(cov_mat[1,1])_$(num_samples)"
+    if policy_type != :mppi && policy_type != :gmppi
+        fname = fname * "_$(ais_its)"
+    end
+    if policy_type == :cemppi
+        fname = fname * "_$(ce_elite_threshold)"
+        fname = fname * "_$(ce_Σ_est)"
+    elseif policy_type ∈ [:μΣaismppi, :μaismppi, :pmcmppi]
+        fname = fname * "_$(λ_ais_)"
+    elseif policy_type == :cmamppi
+        fname = fname * "_$(cma_σ)"
+        fname = fname * "_$(cma_elite_threshold)"
+    end
     if log_runs
-        fname = "$(env_name)_$(frame_skip)_$(policy_type)_$(num_steps)_$(num_trials)" *
-                "_$(seed)_$(horizon)_$(λ)_$(α)_$(U₀[1])_$(cov_mat[1,1])_$(num_samples)"
-        if policy_type != :mppi && policy_type != :gmppi
-            fname = fname * "_$(ais_its)"
-        end
-        if policy_type == :cemppi
-            fname = fname * "_$(ce_elite_threshold)"
-            fname = fname * "_$(ce_Σ_est)"
-        elseif policy_type ∈ [:μΣaismppi, :μaismppi, :pmcmppi]
-            fname = fname * "_$(λ_ais_)"
-        elseif policy_type == :cmamppi
-            fname = fname * "_$(cma_σ)"
-            fname = fname * "_$(cma_elite_threshold)"
-        end
-        fname = "./logs/" * fname * ".txt"
-        io_stream = open(fname, "w")
+        fname_log = "./logs/" * fname * ".txt"
+        io_stream = open(fname_log, "w")
     end
 
     @printf("\n")
@@ -197,11 +199,16 @@ function simulate_envpool_env(
         @printf(" : %7.2f", seconds_ran)
         @printf("\n")
         if log_runs
-            io_stream = open(fname, "a")
+            io_stream = open(fname_log, "a")
             @printf(io_stream, "Trial %4d: %12.2f : %7d: %12.2f", k, rew, cnt - 1, rew / (cnt - 1))
             @printf(io_stream, " : %7.2f", seconds_ran)
             @printf(io_stream, "\n")
             close(io_stream)
+        end
+
+        if output_acts_file
+            fname_acts = "./acts/" * fname * "trial-$k"
+            write_acts_to_file(env, fname_acts)
         end
 
         env = nothing
@@ -231,7 +238,7 @@ function simulate_envpool_env(
     @printf(" : %7.2f\n", maximum(exec_times))
 
     if log_runs
-        io_stream = open(fname, "a")
+        io_stream = open(fname_log, "a")
         @printf(io_stream, "-----------------------------------\n")
         @printf(io_stream, "Trials %3s: %12.2f : %7.2f: %12.2f", "AVE", mean(rews), mean(steps), mean(rews_per_step))
         @printf(io_stream, " : %7.2f\n", mean(exec_times))

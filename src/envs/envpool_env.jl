@@ -179,13 +179,21 @@ function _restore_using_acts!(env::EnvpoolEnv)
     return env
 end
 
-function create_mujoco_gif(env::EnvpoolEnv)
-    @pyinclude("mujoco_gif.py")
-
+function write_acts_to_file(env::EnvpoolEnv, fname::String)
+    fname = fname * ".csv"
+    io_stream = open(fname, "w")
+    for act in env.acts
+        for (ii, a_i) in enumerate(act)
+            if ii > 1
+                @printf(io_stream, ",")
+            end
+            @printf(io_stream, "%.8f", a_i)
+        end
+        @printf(io_stream, "\n")
+    end
+    close(io_stream)
 end
 
 function install_mujoco_requirements()
     run(`$(PyCall.python) -m pip install envpool`)
-    run(`$(PyCall.python) -m pip install gym`)
-    run(`$(PyCall.python) -m pip install imageio`)
 end
