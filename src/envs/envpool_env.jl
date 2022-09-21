@@ -46,7 +46,7 @@ function EnvpoolEnv(
                 reset_noise_scale=noise,
                 frame_skip=frame_skip,
                 gym_reset_return_info=True,
-                terminate_when_unhealthy=False
+                terminate_when_unhealthy=True
             )
         else:
             return envpool.make(
@@ -187,7 +187,7 @@ function write_acts_to_file(env::EnvpoolEnv, fname::String)
             if ii > 1
                 @printf(io_stream, ",")
             end
-            @printf(io_stream, "%.8f", a_i)
+            @printf(io_stream, "%.20f", a_i)
         end
         @printf(io_stream, "\n")
     end
