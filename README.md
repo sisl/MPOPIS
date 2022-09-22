@@ -65,6 +65,7 @@ simulate_envpool_env(
     λ = 1.0,
     ce_Σ_est = :ss,
     seed = 1,
+    output_acts_file = true,
 )
 ```
 The output should be something similar to:
@@ -85,17 +86,30 @@ U₀                            [0.0000, ..., 0.0000]
 Seed:                         1
 
 Trial    #:       Reward :   Steps:  Reward/Step : Ex Time
-Trial    1:       140.71 :      50:         2.81 :   17.51
-Trial    2:       127.32 :      50:         2.55 :   17.89
+Trial    1:       115.46 :      50:         2.31 :   19.55
+Trial    2:       126.08 :      50:         2.52 :   19.53
 -----------------------------------
-Trials AVE:       134.01 :   50.00:         2.68 :   17.70
-Trials STD:         9.47 :    0.00:         0.19 :    0.27
-Trials MED:       134.01 :   50.00:         2.68 :   17.70
-Trials L95:       127.32 :   50.00:         2.55 :   17.51
-Trials U95:       140.71 :   50.00:         2.81 :   17.89
-Trials MIN:       127.32 :   50.00:         2.55 :   17.51
-Trials MAX:       140.71 :   50.00:         2.81 :   17.89
+Trials AVE:       120.77 :   50.00:         2.42 :   19.54
+Trials STD:         7.51 :    0.00:         0.15 :    0.02
+Trials MED:       120.77 :   50.00:         2.42 :   19.54
+Trials L95:       115.46 :   50.00:         2.31 :   19.53
+Trials U95:       126.08 :   50.00:         2.52 :   19.55
+Trials MIN:       115.46 :   50.00:         2.31 :   19.53
+Trials MAX:       126.08 :   50.00:         2.52 :   19.55
 ```
+
+The `output_acts_file` option, outputs a csv with the actions for the given environment. If you have the required python libraries installed (i.e. gym, numpy, imageio, and argparse), you can use the provided python script to generate a gif. By default, the `simulate_envpool_env` function outputs the action csv into the `./acts` directory. The parameters to `make_mujoco_gif.py` are
+ - `-env`: environment name (e.g. 'Ant-v4')
+ - `-af`: action csv file
+ - `-o`: output gif file name without the extension (e.g. 'output_fname')
+
+Using one of the above action files:
+```
+python ./src/envs/make_mujoco_gif.py -env HalfCheetah-v4 -af ./acts/HalfCheetah-v4_5_cemppi_50_2_1_50_1.0_1.0_0.0_0.25_100_5_0.8_sstrial-2.csv -o HalfCheetah-v4_output_gif
+```
+<img src="https://github.com/sisl/MPOPIS/blob/main/gifs/HalfCheetah-v4_output_gif.gif" width="500" height="500" />
+
+
 
 [^1]: Grady Williams, Nolan Wagener, Brian Goldfain, Paul Drews, James M. Rehg, Byron Boots, and Evangelos A. Theodorou. Information theoretic MPC for model-based reinforcement learning. Proceedings - IEEE International Conference on Robotics and Automation, 2017. doi: 10.1109/ICRA.2017.7989202.
 [^2]: Grady Robert Williams. Model predictive path integral control: Theoretical foundations and applications to autonomous driving. PhD thesis, Georgia Institute of Technology, 2019.
