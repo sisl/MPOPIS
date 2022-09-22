@@ -44,13 +44,13 @@ Simulate the Car Racing environment and save a gif:
 simulate_car_racing(save_gif=true)
 ```
 
-<img src="https://github.com/sisl/MPOPIS/blob/main/gifs/cr-1-cemppi-150-50-10.0-1.0-10-0.8-ss-1-2.gif" width="750" height="750" />
+<img src="https://github.com/sisl/MPOPIS/blob/main/gifs/cr-1-cemppi-150-50-10.0-1.0-10-0.8-ss-1-2.gif" width="450" height="450" />
 
 Also plotting the trajectories and simulating multiple cars
 ```julia
 simulate_car_racing(num_cars=3, plot_traj=true, save_gif=true)
 ```
-<img src="https://github.com/sisl/MPOPIS/blob/main/gifs/mcr-3-cemppi-150-50-10.0-1.0-10-0.8-ss-1-2.gif" width="750" height="750" />
+<img src="https://github.com/sisl/MPOPIS/blob/main/gifs/mcr-3-cemppi-150-50-10.0-1.0-10-0.8-ss-1-2.gif" width="450" height="450" />
 
 Run a MuJoCo environment:
 ```julia
@@ -107,7 +107,7 @@ Using one of the above action files:
 ```
 python ./src/envs/make_mujoco_gif.py -env HalfCheetah-v4 -af ./acts/HalfCheetah-v4_5_cemppi_50_2_1_50_1.0_1.0_0.0_0.25_100_5_0.8_sstrial-2.csv -o HalfCheetah-v4_output_gif
 ```
-<img src="https://github.com/sisl/MPOPIS/blob/main/gifs/HalfCheetah-v4_output_gif.gif" width="500" height="500" />
+<img src="https://github.com/sisl/MPOPIS/blob/main/gifs/HalfCheetah-v4_output_gif.gif" width="450" height="450" />
 
 
 
