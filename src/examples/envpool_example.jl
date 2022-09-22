@@ -47,6 +47,9 @@ function simulate_envpool_env(
         fname = fname * "_$(cma_elite_threshold)"
     end
     if log_runs
+        if !isdir("logs")
+            mkdir("logs")
+        end
         fname_log = "./logs/" * fname * ".txt"
         io_stream = open(fname_log, "w")
     end
@@ -207,6 +210,9 @@ function simulate_envpool_env(
         end
 
         if output_acts_file
+            if !isdir("acts")
+                mkdir("acts")
+            end
             fname_acts = "./acts/" * fname * "trial-$k"
             write_acts_to_file(env, fname_acts)
         end
