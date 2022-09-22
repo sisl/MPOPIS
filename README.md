@@ -1,4 +1,7 @@
 # MPOPIS (Model Predictive Optimized Path Integral Strategies)
+
+[Short YouTube video talking about MPOPIS](https://youtu.be/VOnGff8FTbQ)
+
 A version of model predictive path integral control (MPPI) that allows for the implementation of adaptive importance sampling (AIS) algorithms into the original importance sampling step. Model predictive optimized path integral control (MPOPI) is more sample efficient than MPPI achieving better performance with fewer samples. A video of MPPI and MPOPI controlling 3 cars side by side for comparison can be seen [here](https://youtu.be/dDifSfxtuls). More details can be found in the [wiki](../../wiki/MPOPIS-Details).
 
 The addition of AIS enables the algorithm to use a better set of samples for the calculation of the control. A depiction of how the samples evolve over iterations can be seen in the following gif.
