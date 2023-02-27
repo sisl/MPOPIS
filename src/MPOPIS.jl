@@ -24,6 +24,7 @@ using Dates
 export
     MPPI_Policy,
     GMPPI_Policy,
+    IMPPI_Policy,
     CEMPPI_Policy,
     CMAMPPI_Policy,
     μAISMPPI_Policy,

@@ -41,6 +41,19 @@ function get_policy(
             log=pol_log,
             rng=MersenneTwister(),
         )
+    elseif policy_type == :imppi
+        pol = IMPPI_Policy(
+            env,
+            num_samples=num_samples,
+            horizon=horizon,
+            λ=λ,
+            α=α,
+            U₀=U₀,
+            cov_mat=cov_mat,
+            opt_its=ais_its,
+            log=pol_log,
+            rng=MersenneTwister(),
+        )
     elseif policy_type == :cemppi
         pol = CEMPPI_Policy(
             env,

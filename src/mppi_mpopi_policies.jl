@@ -315,6 +315,64 @@ function calculate_trajectory_costs(pol::GMPPI_Policy, env::AbstractEnv)
 end
 
 """
+IMPPI_Policy{R<:AbstractRNG} <: AbstractGMPPI_Policy
+    Iterative version of MPPI. Same as MPPI, but multple iterations. Updating the mean only
+"""
+mutable struct IMPPI_Policy{R<:AbstractRNG} <: AbstractGMPPI_Policy
+    params::MPPI_Policy_Params
+    env::AbstractEnv
+    U::Vector{Float64}
+    Σ::Matrix{Float64}
+    opt_its::Int
+    rng::R
+    logger::MPPI_Logger
+end
+
+"""
+IMPPI_Policy(env::AbstractEnv;
+    opt_its::Int = 10,
+    kwargs...
+kwargs passed to MPPI_Policy_Params
+"""
+function IMPPI_Policy(env::AbstractEnv;
+    opt_its::Int=10,
+    kwargs...
+)
+    params, U₀, Σ, rng, mppi_logger = MPPI_Policy_Params(env, :gmppi; kwargs...)
+    pol = IMPPI_Policy(params, env, U₀, Σ, opt_its, rng, mppi_logger)
+    return pol
+end
+
+
+function calculate_trajectory_costs(pol::IMPPI_Policy, env::AbstractEnv)
+    K = pol.params.num_samples
+    N = pol.opt_its
+
+    U_orig = pol.U
+    P = Distributions.MvNormal(pol.Σ)
+    Σ_inv = Distributions.invcov(P)
+
+    trajectory_cost = Vector{Float64}(undef, K)
+    ws = Vector{Float64}(undef, K)
+    # Optimize sample distribution and get trajectory costs
+    for n ∈ 1:N
+        E = rand(pol.rng, P, K)
+        trajectory_cost = simulate_model(pol, env, E, Σ_inv, U_orig)
+        if n < N
+            ws = compute_weights(pol.params.weight_method, trajectory_cost)
+            pw = StatsBase.ProbabilityWeights(ws)
+            (μ′, Σ′) = StatsBase.mean_and_cov(E, pw, 2)
+            pol.U = pol.U + vec(μ′)
+        else
+            ws = compute_weights(pol.params.weight_method, trajectory_cost)
+        end
+    end
+    E = E .+ (pol.U - U_orig)
+    pol.U = U_orig
+    return trajectory_cost, E, ws
+end
+
+"""
 CEMPPI_Policy{R<:AbstractRNG} <: AbstractGMPPI_Policy
     Cross-Entropy version of MPOPI
 """
