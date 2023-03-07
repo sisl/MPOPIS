@@ -16,7 +16,7 @@ Versions of MPPI and MPOPI implemented
    - [MPPI](https://github.com/sisl/MPOPIS/blob/157f2d8dc94d71e39208eba8c8bc4f8061e31d83/src/mppi_mpopi_policies.jl#L104) (`:mppi`): Model Predictive Path Integral Control[^1][^2]
    - [GMPPI](https://github.com/sisl/MPOPIS/blob/157f2d8dc94d71e39208eba8c8bc4f8061e31d83/src/mppi_mpopi_policies.jl#L280) (`:gmppi`): generalized version of MPPI, treating the control sequence as one control vector with a combined covariance matrix
  - MPOPI
-   - [i-MMPI](https://github.com/sisl/MPOPIS/blob/157f2d8dc94d71e39208eba8c8bc4f8061e31d83/src/mppi_mpopi_policies.jl#L317) (`:imppi`): iterative version of MPOPI similar to μ-AIS but without the decoupled inverse temperature parameter. μ-AIS is equivalent to IMPPI when λ_ais = λ.
+   - [i-MPPI](https://github.com/sisl/MPOPIS/blob/157f2d8dc94d71e39208eba8c8bc4f8061e31d83/src/mppi_mpopi_policies.jl#L317) (`:imppi`): iterative version of MPOPI similar to μ-AIS but without the decoupled inverse temperature parameter. μ-AIS is equivalent to IMPPI when λ_ais = λ.
    - [PMC](https://github.com/sisl/MPOPIS/blob/157f2d8dc94d71e39208eba8c8bc4f8061e31d83/src/mppi_mpopi_policies.jl#L744) (`:pmcmppi`): population Monte Carlo algorithm with one distribution[^3]
    - [μ-AIS](https://github.com/sisl/MPOPIS/blob/157f2d8dc94d71e39208eba8c8bc4f8061e31d83/src/mppi_mpopi_policies.jl#L608) (`:μaismppi`): mean only moment matching AIS algorithm
    - [μΣ-AIS](https://github.com/sisl/MPOPIS/blob/157f2d8dc94d71e39208eba8c8bc4f8061e31d83/src/mppi_mpopi_policies.jl#L673) (`:μΣaismppi`): mean and covariance moment matching AIS algorithm similar to Mixture-PMC[^4]
