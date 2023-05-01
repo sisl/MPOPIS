@@ -1,6 +1,6 @@
 # MPOPIS (Model Predictive Optimized Path Integral Strategies)
 
-[Short YouTube video talking about MPOPIS](https://youtu.be/VOnGff8FTbQ)
+[Short YouTube video talking about MPOPIS](https://youtu.be/-7jHJP37Nio)
 
 [arXiv Paper](https://arxiv.org/abs/2203.16633)
 
