@@ -1,9 +1,7 @@
 
-mutable struct MultiCarRacingEnv{A,T,R<:AbstractRNG} <: AbstractEnv
+mutable struct MultiCarRacingEnv{T,R<:AbstractRNG} <: AbstractEnv
     N::Int
     envs::Vector{CarRacingEnv}
-    action_space::A
-    observation_space::Space{Vector{A}}
     state::Vector{T}
     done::Bool
     t::Int
@@ -39,41 +37,26 @@ function MultiCarRacingEnv(N=2;
     envs = Vector{CarRacingEnv}(undef, N)
     for ii in 1:N
         if length(car_params) >= ii
-            cre = CarRacingEnv(car_params, T=T, dt=dt, δt=δt, track=track, rng=rng)
+            cre = CarRacingEnv(car_params; T=T, dt=dt, δt=δt, track=track, rng=rng)
         else
-            cre = CarRacingEnv(T=T, dt=dt, δt=δt, track=track, rng=rng)
+            cre = CarRacingEnv(; T=T, dt=dt, δt=δt, track=track, rng=rng)
         end
         envs[ii] = cre
     end
-
-
-    endpts_l = []
-    endpts_r = []
-    single_state_size = length(RLBase.state_space(envs[1]))
-    obs_space_vec = Vector{ClosedInterval}(undef, N * single_state_size)
+    
+    single_state_size = length(RLBase.state_space(envs[1]).domains)
     state = zeros(T, N * single_state_size)
-    for (idx, en) in enumerate(envs)
-        endpts_l = [endpts_l; leftendpoint(RLBase.action_space(en))]
-        endpts_r = [endpts_r; rightendpoint(RLBase.action_space(en))]
-        start_idx = single_state_size * (idx - 1) + 1
-        end_idx = single_state_size * idx
-        obs_space_vec[start_idx:end_idx] = RLBase.state_space(en)[:]
-    end
-    action_space = ClosedInterval{Vector{T}}(endpts_l, endpts_r)
-    observation_space = Space(obs_space_vec)
-
+    
     env = MultiCarRacingEnv(
         N,
         envs,
-        action_space,
-        observation_space,
         state,
         false,
         0,
         dt,
         δt,
         Track(track),
-        rng,
+        rng
     )
 
     reset!(env)
@@ -89,14 +72,38 @@ function Random.seed!(env::MultiCarRacingEnv, seed)
     end
 end
 
-RLBase.action_space(env::MultiCarRacingEnv) = env.action_space
-RLBase.state_space(env::MultiCarRacingEnv{T}) where {T} = env.observation_space
+function RLBase.action_space(env::MultiCarRacingEnv{T}) where {T}
+    endpts_l = []
+    endpts_r = []
+    for en in env.envs
+        endpts_l = [endpts_l; leftendpoint(RLBase.action_space(en))]
+        endpts_r = [endpts_r; rightendpoint(RLBase.action_space(en))]
+    end
+    action_space = ClosedInterval{Vector{T}}(endpts_l, endpts_r)
+    return action_space
+end
+
+function RLBase.state_space(env::MultiCarRacingEnv{T}) where {T}
+    envs = env.envs
+    single_state_size = length(RLBase.state_space(envs[1]).domains)
+    obs_space_vec = Vector{ClosedInterval}(undef, env.N * single_state_size)
+    for (idx, en) in enumerate(envs)
+        start_idx = single_state_size * (idx - 1) + 1
+        end_idx = single_state_size * idx
+        obs_space_vec[start_idx:end_idx] = RLBase.state_space(en)[:]
+    end
+    observation_space = ArrayProductDomain(obs_space_vec)
+    return observation_space
+end
+
+
+
 RLBase.is_terminated(env::MultiCarRacingEnv) = env.done
 RLBase.state(env::MultiCarRacingEnv) = env.state
 
 function _update_states_env2envs(env::MultiCarRacingEnv)
     for (idx, en) in enumerate(env.envs)
-        ss_size = length(RLBase.state_space(en))
+        ss_size = length(RLBase.state_space(en).domains)
         start_idx = ss_size * (idx - 1) + 1
         end_idx = ss_size * idx
         en.state = env.state[start_idx:end_idx]
@@ -105,7 +112,7 @@ end
 
 function _update_states_envs2env(env::MultiCarRacingEnv)
     for (idx, en) in enumerate(env.envs)
-        ss_size = length(RLBase.state_space(en))
+        ss_size = length(RLBase.state_space(en).domains)
         start_idx = ss_size * (idx - 1) + 1
         end_idx = ss_size * idx
         env.state[start_idx:end_idx] = en.state
@@ -150,7 +157,7 @@ function RLBase.reward(env::MultiCarRacingEnv{T}) where {T}
     return rew
 end
 
-function RLBase.reset!(env::MultiCarRacingEnv{A,T}) where {A,T}
+function RLBase.reset!(env::MultiCarRacingEnv{T}) where {T}
     ss_size = length(env.state)
     ind_ss_size = round(Int, length(env.state) / env.N)
     env.envs[1].state = zeros(T, ind_ss_size)
@@ -172,7 +179,7 @@ function RLBase.reset!(env::MultiCarRacingEnv{A,T}) where {A,T}
     nothing
 end
 
-function RLBase.reset!(env::MultiCarRacingEnv{A,T}, state::Vector{T}) where {A,T}
+function RLBase.reset!(env::MultiCarRacingEnv{T}, state::Vector{T}) where {T}
     env.state = state
     _update_states_env2envs(env)
     env.t = 0

@@ -25,10 +25,8 @@ Base.show(io::IO, params::CarRacingEnvParams) = print(
     join(["$p=$(getfield(params, p))" for p in fieldnames(CarRacingEnvParams)], ","),
 )
 
-mutable struct CarRacingEnv{A,T,R<:AbstractRNG} <: AbstractEnv
+mutable struct CarRacingEnv{T,R<:AbstractRNG} <: AbstractEnv
     params::CarRacingEnvParams{T}
-    action_space::A
-    observation_space::Space{Vector{ClosedInterval{T}}}
     state::Vector{T}
     done::Bool
     t::Int
@@ -136,25 +134,8 @@ function CarRacingEnv(
     rng=Random.GLOBAL_RNG
 )
 
-    action_space = ClosedInterval{Vector{T}}(
-        [-1.0, -1.0],
-        [1.0, 1.0],
-    )
-    observation_space = Space([
-        -Inf .. Inf,                          # X position in XY plane (x = north, y = west)
-        -Inf .. Inf,                          # Y position in XY plane (x = north, y = west)
-        -π .. π,                              # yaw (rotation from x axis toward y axis [north to west])
-        -Inf .. Inf,                          # Longitudinal velocity
-        -Inf .. Inf,                          # Lateral velocity
-        -Inf .. Inf,                          # yaw rate
-        -params.δ_max .. params.δ_max,        # steering angle
-        -1.0 .. 1.0,                          # acceleration/brake amount [-1, 1]
-    ])
-
     env = CarRacingEnv(
         params,
-        action_space,
-        observation_space,
         zeros(T, 8),
         false,
         0,
@@ -172,8 +153,25 @@ CarRacingEnv{T}(; kwargs...) where {T} = CarRacingEnv(; T=T, kwargs...)
 
 Random.seed!(env::CarRacingEnv, seed) = Random.seed!(env.rng, seed)
 
-RLBase.action_space(env::CarRacingEnv) = env.action_space
-RLBase.state_space(env::CarRacingEnv{T}) where {T} = env.observation_space
+function RLBase.action_space(::CarRacingEnv{T}) where {T}
+    action_space = ClosedInterval{Vector{T}}([-1.0, -1.0], [1.0, 1.0])
+    return action_space
+end
+
+function RLBase.state_space(env::CarRacingEnv)
+    state_space = ArrayProductDomain([
+        -Inf .. Inf,                          # X position in XY plane (x = north, y = west)
+        -Inf .. Inf,                          # Y position in XY plane (x = north, y = west)
+        -π .. π,                              # yaw (rotation from x axis toward y axis [north to west])
+        -Inf .. Inf,                          # Longitudinal velocity
+        -Inf .. Inf,                          # Lateral velocity
+        -Inf .. Inf,                          # yaw rate
+        -env.params.δ_max .. env.params.δ_max,        # steering angle
+        -1.0 .. 1.0,                          # acceleration/brake amount [-1, 1]
+    ])
+    return state_space
+end
+
 RLBase.is_terminated(env::CarRacingEnv) = env.done
 RLBase.state(env::CarRacingEnv) = env.state
 
@@ -214,7 +212,7 @@ function RLBase.reward(env::CarRacingEnv{T}) where {T}
     return rew
 end
 
-function RLBase.reset!(env::CarRacingEnv{A,T}) where {A,T}
+function RLBase.reset!(env::CarRacingEnv{T}) where {T}
     ss_size = length(env.state)
     env.state = zeros(T, ss_size)
     env.state[3] = deg2rad(90)
@@ -224,7 +222,7 @@ function RLBase.reset!(env::CarRacingEnv{A,T}) where {A,T}
     nothing
 end
 
-function RLBase.reset!(env::CarRacingEnv{A,T}, state::Vector{T}) where {A,T}
+function RLBase.reset!(env::CarRacingEnv{T}, state::Vector{T}) where {T}
     env.state = state
     env.t = 0
     env.done = false
@@ -237,16 +235,16 @@ end
     a[1] = Turn angle [-max turn angle, max turn angle] (-1 right turn, +1 left turn)
     a[2] = Pedal amount (-1 = full brake, 1 = full throttle)
 """
-function (env::CarRacingEnv{<:ClosedInterval})(a::Vector{Float64})
-    a in env.action_space || error("Action is not in action space")
+function (env::CarRacingEnv)(a::Vector{Float64})
+    a in action_space(env) || error("Action is not in action space")
     _step!(env, a)
 end
 
-function (env::CarRacingEnv{<:ClosedInterval})(a::Vector{Int})
+function (env::CarRacingEnv)(a::Vector{Int})
     env(Float64.(a))
 end
 
-function (env::CarRacingEnv{<:ClosedInterval})(a::Matrix{Float64})
+function (env::CarRacingEnv)(a::Matrix{Float64})
     size(a)[2] == 1 || error("Only implented for one step")
     env(vec(a))
 end

@@ -1,10 +1,8 @@
 using PyCall
 
-mutable struct EnvpoolEnv{A,T,R<:AbstractRNG} <: AbstractEnv
+mutable struct EnvpoolEnv{T,R<:AbstractRNG} <: AbstractEnv
     task::String
     py_env::PyObject
-    action_space::A
-    observation_space::Space{Vector{ClosedInterval{T}}}
     num_states::Int
     num_envs::Int
     info::Dict
@@ -62,26 +60,11 @@ function EnvpoolEnv(
 
     py_env = py"get_envs_ep"(task, "gym", num_envs, frame_skip)
     env_data = py_env.reset()
-    py_action_space = py_env.action_space
-
-    action_space = ClosedInterval{Vector{T}}(
-        py_action_space.low,
-        py_action_space.high,
-    )
-
-    py_observation_space = py_env.observation_space
-    py_obs_len = py_observation_space.shape[1]
-    py_obs_low = py_observation_space.low
-    py_obs_high = py_observation_space.high
-
-    observation_vec = [py_obs_low[ii] .. py_obs_high[ii] for ii in 1:py_obs_len]
-    observation_space = Space(observation_vec)
-
+    py_obs_len = py_env.observation_space.shape[1]
+    
     env = EnvpoolEnv(
         task,
         py_env,
-        action_space,
-        observation_space,
         py_obs_len,
         num_envs,
         env_data[end],
@@ -98,8 +81,27 @@ function EnvpoolEnv(
 end
 
 Random.seed!(env::EnvpoolEnv, seed) = Random.seed!(env.rng, seed)
-RLBase.action_space(env::EnvpoolEnv) = env.action_space
-RLBase.state_space(env::EnvpoolEnv) = env.observation_space
+
+function RLBase.action_space(env::EnvpoolEnv{T}) where {T}
+    py_action_space = env.py_env.action_space
+    action_space = ClosedInterval{Vector{T}}(
+        py_action_space.low,
+        py_action_space.high,
+    )   
+    return action_space 
+end
+
+function RLBase.state_space(env::EnvpoolEnv{T}) where {T}
+    py_obs_len = env.py_env.observation_space.shape[1]
+    py_obs_low = env.py_env.observation_space.low
+    py_obs_high = env.py_env.observation_space.high
+
+    observation_vec = [py_obs_low[ii] .. py_obs_high[ii] for ii in 1:py_obs_len]
+    observation_space = ArrayProductDomain(observation_vec)
+    
+    return observation_space
+end
+
 RLBase.is_terminated(env::EnvpoolEnv) = env.done
 RLBase.state(env::EnvpoolEnv) = env.state
 RLBase.reward(env::EnvpoolEnv) = env.rews
@@ -107,7 +109,7 @@ RLBase.reward(env::EnvpoolEnv) = env.rews
 """
     The keywork argument `restore` is used to restore the environments based on `acts`
 """
-function RLBase.reset!(env::EnvpoolEnv{A,T}; restore=false) where {A,T}
+function RLBase.reset!(env::EnvpoolEnv{T}; restore=false) where {T}
     env_data = env.py_env.reset()
     env.info = env_data[end]
     env.rews = zeros(T, env.num_envs)

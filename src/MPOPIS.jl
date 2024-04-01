@@ -16,6 +16,7 @@ import CovarianceEstimation.SimpleCovariance
 @reexport using ReinforcementLearning
 import ReinforcementLearning.AbstractEnv
 import ReinforcementLearning.RLBase
+using DomainSets
 using Plots
 @reexport import Plots.plot
 using ProgressMeter
