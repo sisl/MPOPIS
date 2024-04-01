@@ -60,7 +60,8 @@ function EnvpoolEnv(
 
     py_env = py"get_envs_ep"(task, "gym", num_envs, frame_skip)
     env_data = py_env.reset()
-
+    py_obs_len = py_env.observation_space.shape[1]
+    
     env = EnvpoolEnv(
         task,
         py_env,
@@ -91,16 +92,14 @@ function RLBase.action_space(env::EnvpoolEnv{T}) where {T}
 end
 
 function RLBase.state_space(env::EnvpoolEnv{T}) where {T}
-    
-    py_observation_space = env.py_env.observation_space
-    py_obs_len = py_observation_space.shape[1]
-    py_obs_low = py_observation_space.low
-    py_obs_high = py_observation_space.high
+    py_obs_len = env.py_env.observation_space.shape[1]
+    py_obs_low = env.py_env.observation_space.low
+    py_obs_high = env.py_env.observation_space.high
 
     observation_vec = [py_obs_low[ii] .. py_obs_high[ii] for ii in 1:py_obs_len]
     observation_space = ArrayProductDomain(observation_vec)
     
-    return env.observation_space
+    return observation_space
 end
 
 RLBase.is_terminated(env::EnvpoolEnv) = env.done
