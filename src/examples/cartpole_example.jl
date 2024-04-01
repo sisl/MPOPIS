@@ -1,12 +1,8 @@
 
 # Modifications to the RLBase functions to work with different GMPPI algorithms
-function (env::CartPoleEnv{<:Base.OneTo{Int}})(a::Vector)
+function (env::CartPoleEnv)(a)
     length(a) == 1 || error("Only implented for 1 step")
-    env(a[1])
-end
-function (env::CartPoleEnv{<:ClosedInterval})(a::Vector)
-    length(a) == 1 || error("Only implented for 1 step")
-    env(a[1])
+    RLBase.act!(env, a[1])
 end
 
 """ 
@@ -189,4 +185,3 @@ function simulate_cartpole(;
         gif(anim, gif_name, fps=10)
     end
 end
-

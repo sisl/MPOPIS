@@ -1,13 +1,9 @@
 
 
 # Modifications to the RLBase functions to work with different GMPPI algorithms
-function (env::MountainCarEnv{<:ClosedInterval})(a::Vector)
+function (env::MountainCarEnv)(a)
     length(a) == 1 || error("Only implented for 1 step")
-    env(a[1])
-end
-function (env::MountainCarEnv{<:Base.OneTo{Int}})(a::Vector)
-    length(a) == 1 || error("Only implented for 1 step")
-    env(a[1])
+    RLBase.act!(env, a[1])
 end
 
 # Modified MountainCar reward function
